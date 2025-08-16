@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #e0e0e0;
+  --accent: #39ff14;
+  --accent-secondary: #a259ff;
+  --danger: #ff3860;
+  --card-bg: #18181b;
+  --card-border: #262626;
+  --glow: 0 0 8px var(--accent), 0 0 16px var(--accent-secondary);
 }
 
 @theme inline {
@@ -22,5 +28,62 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-mono), "Fira Mono", "Consolas", monospace;
+  letter-spacing: 0.01em;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: var(--accent-secondary);
+  text-shadow: var(--glow);
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 2px 16px #000a;
+  padding: 2rem;
+  margin: 1rem 0;
+  transition: box-shadow 0.2s, border 0.2s;
+}
+.card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px var(--accent), 0 0 32px var(--accent-secondary);
+}
+
+.glow {
+  text-shadow: var(--glow);
+}
+
+.btn {
+  background: var(--accent);
+  color: #0a0a0a;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: bold;
+  font-family: var(--font-mono), monospace;
+  box-shadow: 0 0 8px var(--accent);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--accent-secondary);
+  color: #fff;
+  box-shadow: 0 0 16px var(--accent-secondary);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #18181b;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-secondary);
+  border-radius: 8px;
 }

@@ -27,7 +27,46 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <header
+          style={{
+            width: "100%",
+            padding: "2rem 0 1rem 0",
+            textAlign: "center",
+            fontFamily: "var(--font-mono), monospace",
+            color: "var(--accent)",
+            textShadow:
+              "0 0 8px var(--accent), 0 0 16px var(--accent-secondary)",
+            fontSize: "2.5rem",
+            letterSpacing: "0.08em",
+            fontWeight: 900,
+          }}
+        >
+          HACKATHON+{" "}
+          <span style={{ color: "var(--accent-secondary)" }}>BALLERINA</span>
+        </header>
+        <main
+          style={{
+            maxWidth: "900px",
+            margin: "0 auto",
+            padding: "2rem 1rem",
+          }}
+        >
+          <div className="card">{children}</div>
+        </main>
+        <footer
+          style={{
+            width: "100%",
+            textAlign: "center",
+            color: "var(--accent-secondary)",
+            padding: "1rem 0",
+            fontFamily: "var(--font-mono), monospace",
+            fontSize: "1rem",
+            textShadow: "0 0 8px var(--accent-secondary)",
+          }}
+        >
+          &copy; {new Date().getFullYear()} Hackathon+ Ballerina. All rights
+          reserved.
+        </footer>
       </body>
     </html>
   );
