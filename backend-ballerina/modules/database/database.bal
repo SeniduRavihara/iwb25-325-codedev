@@ -4,7 +4,7 @@ import ballerinax/java.jdbc;
 import backend_ballerina.models;
 
 // Configuration
-configurable string dbPath = "./auth.db";
+configurable string dbPath = "./hackathon_plus_DB.db";
 configurable string jdbcUrl = "jdbc:sqlite:" + dbPath;
 
 // Database client

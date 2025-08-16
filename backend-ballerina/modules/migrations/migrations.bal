@@ -278,9 +278,10 @@ public class MigrationManager {
     // Execute CREATE TABLE from parsed content
     private function executeCreateTableFromContent(string sql) returns error? {
         io:println("🔨 Processing CREATE TABLE statement");
+        string upperSQL = sql.toUpperAscii();
         
         // Check if it's creating a users table
-        if sql.toUpperAscii().includes("CREATE TABLE USERS") || sql.toUpperAscii().includes("CREATE TABLE IF NOT EXISTS USERS") {
+        if upperSQL.includes("CREATE TABLE USERS") || upperSQL.includes("CREATE TABLE IF NOT EXISTS USERS") {
             io:println("📝 Creating users table...");
             sql:ExecutionResult|error result = self.dbClient->execute(`
                 CREATE TABLE IF NOT EXISTS users (
@@ -297,7 +298,77 @@ public class MigrationManager {
             }
             io:println("✅ Users table created successfully");
             
-        } else if sql.toUpperAscii().includes("CREATE TABLE ROLES") {
+        } else if upperSQL.includes("CREATE TABLE CHALLENGES") || upperSQL.includes("CREATE TABLE IF NOT EXISTS CHALLENGES") {
+            io:println("📝 Creating challenges table...");
+            sql:ExecutionResult|error result = self.dbClient->execute(`
+                CREATE TABLE IF NOT EXISTS challenges (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    difficulty TEXT NOT NULL,
+                    input_format TEXT,
+                    output_format TEXT,
+                    constraints TEXT,
+                    time_limit INTEGER DEFAULT 1000,
+                    memory_limit INTEGER DEFAULT 256,
+                    created_by INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                )
+            `);
+            if result is error {
+                return result;
+            }
+            io:println("✅ Challenges table created successfully");
+            
+        } else if upperSQL.includes("CREATE TABLE SUBMISSIONS") || upperSQL.includes("CREATE TABLE IF NOT EXISTS SUBMISSIONS") {
+            io:println("📝 Creating submissions table...");
+            sql:ExecutionResult|error result = self.dbClient->execute(`
+                CREATE TABLE IF NOT EXISTS submissions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    challenge_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    code TEXT NOT NULL,
+                    language TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    runtime INTEGER,
+                    memory_used INTEGER,
+                    test_cases_passed INTEGER DEFAULT 0,
+                    total_test_cases INTEGER DEFAULT 0,
+                    error_message TEXT,
+                    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (challenge_id) REFERENCES challenges(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            `);
+            if result is error {
+                return result;
+            }
+            io:println("✅ Submissions table created successfully");
+            
+        } else if upperSQL.includes("CREATE TABLE CONTESTS") || upperSQL.includes("CREATE TABLE IF NOT EXISTS CONTESTS") {
+            io:println("📝 Creating contests table...");
+            sql:ExecutionResult|error result = self.dbClient->execute(`
+                CREATE TABLE IF NOT EXISTS contests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    start_time DATETIME NOT NULL,
+                    end_time DATETIME NOT NULL,
+                    created_by INTEGER NOT NULL,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (created_by) REFERENCES users(id)
+                )
+            `);
+            if result is error {
+                return result;
+            }
+            io:println("✅ Contests table created successfully");
+            
+        } else if upperSQL.includes("CREATE TABLE ROLES") || upperSQL.includes("CREATE TABLE IF NOT EXISTS ROLES") {
             io:println("📝 Creating roles table...");
             sql:ExecutionResult|error result = self.dbClient->execute(`
                 CREATE TABLE IF NOT EXISTS roles (
@@ -312,7 +383,7 @@ public class MigrationManager {
             }
             io:println("✅ Roles table created successfully");
             
-        } else if sql.toUpperAscii().includes("CREATE TABLE USER_ROLES") {
+        } else if upperSQL.includes("CREATE TABLE USER_ROLES") || upperSQL.includes("CREATE TABLE IF NOT EXISTS USER_ROLES") {
             io:println("📝 Creating user_roles table...");
             sql:ExecutionResult|error result = self.dbClient->execute(`
                 CREATE TABLE IF NOT EXISTS user_roles (
@@ -330,8 +401,27 @@ public class MigrationManager {
             }
             io:println("✅ User_roles table created successfully");
             
+        } else if upperSQL.includes("CREATE TABLE TEST_CASES") || upperSQL.includes("CREATE TABLE IF NOT EXISTS TEST_CASES") {
+            io:println("📝 Creating test_cases table...");
+            sql:ExecutionResult|error result = self.dbClient->execute(`
+                CREATE TABLE IF NOT EXISTS test_cases (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    challenge_id INTEGER NOT NULL,
+                    input_data TEXT NOT NULL,
+                    expected_output TEXT NOT NULL,
+                    is_sample BOOLEAN DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (challenge_id) REFERENCES challenges(id)
+                )
+            `);
+            if result is error {
+                return result;
+            }
+            io:println("✅ Test_cases table created successfully");
+            
         } else {
-            io:println("⚠️  CREATE TABLE statement not specifically handled: ", sql.substring(0, 50), "...");
+            io:println("⚠️  CREATE TABLE statement not specifically handled");
+            io:println("📋 SQL content: ", sql.substring(0, 100), "...");
             io:println("💡 Add a specific handler in executeCreateTableFromContent() for this table");
         }
         
