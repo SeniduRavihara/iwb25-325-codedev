@@ -97,3 +97,7 @@ public function getUserByUsername(string username) returns models:User|error {
     
     return user.value;
 }
+
+public function getDbClient() returns jdbc:Client {
+    return dbClient;
+}

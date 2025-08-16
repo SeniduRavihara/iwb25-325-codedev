@@ -1,14 +1,84 @@
-// main.bal
-
-import backend_ballerina.auth;
-import backend_ballerina.database;
-import backend_ballerina.models;
-
-import ballerina/http;
 import ballerina/io;
+import ballerina/http;
+import backend_ballerina.models;
+import backend_ballerina.database;
+import backend_ballerina.auth;
+import backend_ballerina.migrations;
+import backend_ballerina.seeders;
 
 // Configuration
 configurable int serverPort = 8080;
+
+// Check for command line arguments
+public function main(string... args) returns error? {
+    if args.length() > 0 {
+        match args[0] {
+            "migrate" => {
+                return runMigrations();
+            }
+            "migrate:rollback" => {
+                return rollbackMigration();
+            }
+            "seed" => {
+                return runSeeders();
+            }
+            "db:fresh" => {
+                return freshDatabase();
+            }
+            _ => {
+                io:println("Unknown command: " + args[0]);
+                io:println("Available commands: migrate, migrate:rollback, seed, db:fresh");
+                return;
+            }
+        }
+    }
+
+    // Default: start server
+    return startServer();
+}
+
+function runMigrations() returns error? {
+    io:println("🔄 Running database migrations...");
+    migrations:MigrationManager migrationManager = new(database:getDbClient());
+    check migrationManager.migrate();
+    return;
+}
+
+function rollbackMigration() returns error? {
+    io:println("⏪ Rolling back last migration...");
+    migrations:MigrationManager migrationManager = new(database:getDbClient());
+    check migrationManager.rollbackMigration();
+    return;
+}
+
+function runSeeders() returns error? {
+    seeders:DatabaseSeeder seeder = new(database:getDbClient());
+    check seeder.seed();
+    return;
+}
+
+function freshDatabase() returns error? {
+    seeders:DatabaseSeeder seeder = new(database:getDbClient());
+    check seeder.fresh();
+    return;
+}
+
+function startServer() returns error? {
+    // Initialize database
+    error? dbInitResult = database:initDatabase();
+    if dbInitResult is error {
+        return dbInitResult;
+    }
+    
+    io:println(string `🚀 Auth Server starting on port ${serverPort}...`);
+    io:println("Available endpoints:");
+    io:println("  GET  /health   - Health check");
+    io:println("  POST /register - User registration");
+    io:println("  POST /login    - User login");
+    io:println("  GET  /profile  - Get user profile (requires JWT)");
+    io:println("\n✅ Server is ready to accept requests!");
+    return;
+}
 
 // HTTP service
 service / on new http:Listener(serverPort) {
@@ -21,7 +91,7 @@ service / on new http:Listener(serverPort) {
     // User registration endpoint
     resource function post register(http:Caller caller, http:Request req) returns error? {
         json|http:ClientError payload = req.getJsonPayload();
-
+        
         if payload is http:ClientError {
             http:Response response = new;
             response.statusCode = 400;
@@ -47,7 +117,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for registration
         models:AuthResponse|models:ErrorResponse result = auth:registerUser(userReg);
-
+        
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -65,7 +135,7 @@ service / on new http:Listener(serverPort) {
     // User login endpoint
     resource function post login(http:Caller caller, http:Request req) returns error? {
         json|http:ClientError payload = req.getJsonPayload();
-
+        
         if payload is http:ClientError {
             http:Response response = new;
             response.statusCode = 400;
@@ -91,7 +161,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for login
         models:AuthResponse|models:ErrorResponse result = auth:loginUser(userLogin);
-
+        
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -137,7 +207,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for profile
         models:User|models:ErrorResponse result = auth:getUserProfile(token);
-
+        
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -157,21 +227,4 @@ service / on new http:Listener(serverPort) {
         });
         check caller->respond(response);
     }
-}
-
-// Main function
-public function main() returns error? {
-    // Initialize database
-    error? dbInitResult = database:initDatabase();
-    if dbInitResult is error {
-        return dbInitResult;
-    }
-
-    io:println(string `🚀 Auth Server starting on port ${serverPort}...`);
-    io:println("Available endpoints:");
-    io:println("  GET  /health   - Health check");
-    io:println("  POST /register - User registration");
-    io:println("  POST /login    - User login");
-    io:println("  GET  /profile  - Get user profile (requires JWT)");
-    io:println("\n✅ Server is ready to accept requests!");
 }

@@ -69,6 +69,9 @@ dependencies = [
 	{org = "ballerina", name = "os"},
 	{org = "ballerina", name = "time"}
 ]
+modules = [
+	{org = "ballerina", packageName = "file", moduleName = "file"}
+]
 
 [[package]]
 org = "ballerina"
@@ -351,6 +354,7 @@ name = "backend_ballerina"
 version = "0.1.0"
 dependencies = [
 	{org = "ballerina", name = "crypto"},
+	{org = "ballerina", name = "file"},
 	{org = "ballerina", name = "http"},
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "mime"},
@@ -366,8 +370,10 @@ modules = [
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.database"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.handlers"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.jwt"},
+	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.migrations"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.models"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.routes"},
+	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.seeders"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.utils"}
 ]
 
