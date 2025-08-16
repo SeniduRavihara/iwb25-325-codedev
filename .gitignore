@@ -1,0 +1,56 @@
+# --- General ---
+.DS_Store
+Thumbs.db
+*.log
+logs/
+.env
+.env.local
+.env.*.local
+
+# --- Node.js / Next.js ---
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Dependency directories
+frontend-next/node_modules/
+backend-ballerina/node_modules/
+
+# Build artifacts
+frontend-next/.next/
+frontend-next/out/
+frontend-next/.turbo/
+
+# VSCode / JetBrains
+.vscode/
+.idea/
+*.iml
+
+# --- Ballerina ---
+backend-ballerina/target/
+backend-ballerina/generated/
+backend-ballerina/Config.toml
+Ballerina.lock
+
+# --- Docker ---
+*.pid
+*.seed
+docker-compose.override.yml
+
+# --- Testing ---
+coverage/
+.nyc_output/
+jest-cache/
+jest-results.json
+cypress/videos/
+cypress/screenshots/
+
+# --- Misc ---
+*.swp
+*.swo
+*.tmp
+*.bak

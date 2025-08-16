@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  frontend:
+    build: ./frontend-next
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080
+    depends_on:
+      - backend
+      - code-executor
+
+  backend:
+    build: ./backend-ballerina
+    ports:
+      - "8080:8080"
+
+  code-executor:
+    build: ./code-execution-engine-docker
+    ports:
+      - "5000:5000"
