@@ -368,6 +368,7 @@ modules = [
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.auth"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.database"},
+	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.interfaces"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.jwt"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.migrations"},
 	{org = "senid", packageName = "backend_ballerina", moduleName = "backend_ballerina.models"},
