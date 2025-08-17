@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -66,7 +65,6 @@ export default function CreateContestPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">

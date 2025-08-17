@@ -37,7 +37,8 @@ export default function LoginPage() {
     const result = await login(username, password);
 
     if (result.success) {
-      router.push("/");
+      // Redirect is handled by AuthContext
+      // router.push("/"); // Removed - AuthContext handles redirect
     } else {
       setError(result.message);
     }

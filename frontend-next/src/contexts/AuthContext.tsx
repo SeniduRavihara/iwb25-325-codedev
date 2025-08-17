@@ -1,6 +1,8 @@
 "use client";
 
 import { apiService } from "@/lib/api";
+import { navigationUtils } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export interface User {
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
 
   // Set client flag to prevent hydration mismatch
   useEffect(() => {
@@ -55,6 +58,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, [isClient]);
+
+  // Handle browser back button behavior
+  useEffect(() => {
+    if (!isClient) return;
+
+    const handleBeforeUnload = () => {
+      // Clear any stored redirect path when user manually navigates
+      navigationUtils.clearRedirectPath();
+    };
+
+    const handlePopState = () => {
+      // If user is authenticated and tries to go back to login page, redirect to home
+      if (user && token && window.location.pathname === "/login") {
+        router.replace("/");
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isClient, user, token, router]);
 
   const verifyToken = async (token: string) => {
     try {
@@ -96,6 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           created_at: new Date().toISOString(),
         });
         localStorage.setItem("auth_token", response.data.token);
+
+        // Get the stored redirect path and redirect back
+        const redirectPath = navigationUtils.getAndClearRedirectPath();
+        if (redirectPath) {
+          window.location.href = redirectPath;
+        }
+
         return { success: true, message: "Login successful" };
       } else {
         return { success: false, message: response.message || "Login failed" };

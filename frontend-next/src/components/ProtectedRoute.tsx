@@ -1,7 +1,8 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { navigationUtils } from "@/lib/utils";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface ProtectedRouteProps {
@@ -17,7 +18,9 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   // Set client flag to prevent hydration mismatch
   useEffect(() => {
@@ -25,17 +28,30 @@ export function ProtectedRoute({
   }, []);
 
   useEffect(() => {
-    if (!isLoading && isClient) {
+    if (!isLoading && isClient && !hasRedirected) {
       // If user is authenticated and trying to access auth pages, redirect to home
       if (isAuthenticated && requireAuth === false) {
-        router.push(redirectTo);
+        setHasRedirected(true);
+        router.replace(redirectTo);
       }
       // If user is not authenticated and trying to access protected pages, redirect to login
       else if (!isAuthenticated && requireAuth === true) {
-        router.push("/login");
+        setHasRedirected(true);
+        // Store the current path to redirect back after login
+        navigationUtils.storeRedirectPath(pathname);
+        router.replace("/login");
       }
     }
-  }, [isAuthenticated, isLoading, requireAuth, redirectTo, router, isClient]);
+  }, [
+    isAuthenticated,
+    isLoading,
+    requireAuth,
+    redirectTo,
+    router,
+    isClient,
+    hasRedirected,
+    pathname,
+  ]);
 
   // Show loading state while checking authentication or during SSR
   if (isLoading || !isClient) {
