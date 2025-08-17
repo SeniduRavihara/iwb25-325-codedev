@@ -13,23 +13,34 @@ import { RichTextEditor } from "@/components/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, X, Save } from "lucide-react"
-import type { TestCase } from "@/lib/mock-data"
+import { mockChallenges, type TestCase } from "@/lib/mock-data"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 
-export default function AddChallengePage() {
+interface EditChallengePageProps {
+  params: {
+    id: string
+  }
+}
+
+export default function EditChallengePage({ params }: EditChallengePageProps) {
+  const challenge = mockChallenges.find((c) => c.id === params.id)
+
+  if (!challenge) {
+    notFound()
+  }
+
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    difficulty: "",
-    timeLimit: 30,
-    memoryLimit: 256,
-    tags: [] as string[],
+    title: challenge.title,
+    description: challenge.description,
+    difficulty: challenge.difficulty,
+    timeLimit: challenge.timeLimit,
+    memoryLimit: challenge.memoryLimit,
+    tags: challenge.tags,
     newTag: "",
   })
 
-  const [testCases, setTestCases] = useState<TestCase[]>([
-    { id: "1", input: "", expectedOutput: "", isHidden: false, points: 50 },
-  ])
+  const [testCases, setTestCases] = useState<TestCase[]>(challenge.testCases)
 
   const addTag = () => {
     if (formData.newTag.trim() && !formData.tags.includes(formData.newTag.trim())) {
@@ -71,8 +82,8 @@ export default function AddChallengePage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement challenge creation logic
-    console.log("Creating challenge:", { ...formData, testCases })
+    // TODO: Implement challenge update logic
+    console.log("Updating challenge:", { ...formData, testCases })
   }
 
   return (
@@ -82,11 +93,11 @@ export default function AddChallengePage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Add New Challenge</h1>
-            <p className="text-muted-foreground mt-2">Create a new coding challenge for the platform</p>
+            <h1 className="text-3xl font-bold text-foreground">Edit Challenge</h1>
+            <p className="text-muted-foreground mt-2">Update the challenge details and test cases</p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/challenges">Cancel</Link>
+            <Link href={`/challenges/${params.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -120,7 +131,10 @@ export default function AddChallengePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="difficulty">Difficulty</Label>
-                  <Select onValueChange={(value) => setFormData({ ...formData, difficulty: value })}>
+                  <Select
+                    value={formData.difficulty}
+                    onValueChange={(value) => setFormData({ ...formData, difficulty: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
@@ -257,11 +271,11 @@ export default function AddChallengePage() {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href="/challenges">Cancel</Link>
+              <Link href={`/challenges/${params.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />
-              Create Challenge
+              Update Challenge
             </Button>
           </div>
         </form>

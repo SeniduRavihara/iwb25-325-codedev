@@ -12,24 +12,37 @@ import { Textarea } from "@/components/ui/textarea"
 import { RichTextEditor } from "@/components/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { mockChallenges } from "@/lib/mock-data"
+import { mockContests, mockChallenges } from "@/lib/mock-data"
 import { X, Save, Clock } from "lucide-react"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 
-export default function CreateContestPage() {
+interface EditContestPageProps {
+  params: {
+    id: string
+  }
+}
+
+export default function EditContestPage({ params }: EditContestPageProps) {
+  const contest = mockContests.find((c) => c.id === params.id)
+
+  if (!contest) {
+    notFound()
+  }
+
   const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    startTime: "",
-    duration: 120,
-    maxParticipants: 100,
-    registrationDeadline: "",
-    rules: "",
-    prizes: [] as string[],
+    title: contest.title,
+    description: contest.description,
+    startTime: contest.startTime.slice(0, 16), // Format for datetime-local
+    duration: contest.duration,
+    maxParticipants: contest.maxParticipants || 100,
+    registrationDeadline: contest.registrationDeadline.slice(0, 16),
+    rules: contest.rules,
+    prizes: contest.prizes,
     newPrize: "",
   })
 
-  const [selectedChallenges, setSelectedChallenges] = useState<string[]>([])
+  const [selectedChallenges, setSelectedChallenges] = useState<string[]>(contest.challenges)
 
   const addPrize = () => {
     if (formData.newPrize.trim() && !formData.prizes.includes(formData.newPrize.trim())) {
@@ -60,8 +73,8 @@ export default function CreateContestPage() {
       alert("Please select at least one challenge")
       return
     }
-    // TODO: Implement contest creation logic
-    console.log("Creating contest:", { ...formData, challenges: selectedChallenges })
+    // TODO: Implement contest update logic
+    console.log("Updating contest:", { ...formData, challenges: selectedChallenges })
   }
 
   return (
@@ -71,11 +84,11 @@ export default function CreateContestPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Create New Contest</h1>
-            <p className="text-muted-foreground mt-2">Set up a new coding contest with challenges and rules</p>
+            <h1 className="text-3xl font-bold text-foreground">Edit Contest</h1>
+            <p className="text-muted-foreground mt-2">Update contest details and settings</p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/contests">Cancel</Link>
+            <Link href={`/contests/${params.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -259,11 +272,11 @@ export default function CreateContestPage() {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href="/contests">Cancel</Link>
+              <Link href={`/contests/${params.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />
-              Create Contest
+              Update Contest
             </Button>
           </div>
         </form>

@@ -22,6 +22,8 @@ public function initDatabase() returns error? {
             username TEXT UNIQUE NOT NULL,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            role TEXT DEFAULT 'user',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
@@ -55,15 +57,15 @@ public function checkUserExists(string username, string email) returns boolean|e
 // Create new user
 public function createUser(models:UserRegistration userReg, string hashedPassword) returns sql:ExecutionResult|error {
     return dbClient->execute(`
-        INSERT INTO users (username, email, password_hash) 
-        VALUES (${userReg.username}, ${userReg.email}, ${hashedPassword})
+        INSERT INTO users (username, email, password_hash, is_admin, role) 
+        VALUES (${userReg.username}, ${userReg.email}, ${hashedPassword}, FALSE, 'user')
     `);
 }
 
 // Verify user credentials
 public function getUserByCredentials(string username, string hashedPassword) returns models:User|error {
     stream<models:User, sql:Error?> userStream =
-        dbClient->query(`SELECT id, username, email, password_hash, created_at FROM users 
+        dbClient->query(`SELECT id, username, email, password_hash, is_admin, role, created_at FROM users 
                         WHERE username = ${username} AND password_hash = ${hashedPassword}`);
 
     record {|models:User value;|}|error? user = userStream.next();
@@ -83,7 +85,7 @@ public function getUserByCredentials(string username, string hashedPassword) ret
 // Get user by username
 public function getUserByUsername(string username) returns models:User|error {
     stream<models:User, sql:Error?> userStream =
-        dbClient->query(`SELECT id, username, email, password_hash, created_at FROM users WHERE username = ${username}`);
+        dbClient->query(`SELECT id, username, email, password_hash, is_admin, role, created_at FROM users WHERE username = ${username}`);
 
     record {|models:User value;|}|error? user = userStream.next();
     error? closeResult = userStream.close();

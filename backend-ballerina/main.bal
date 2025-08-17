@@ -1,10 +1,11 @@
-import ballerina/io;
-import ballerina/http;
-import backend_ballerina.models;
-import backend_ballerina.database;
 import backend_ballerina.auth;
+import backend_ballerina.database;
 import backend_ballerina.migrations;
+import backend_ballerina.models;
 import backend_ballerina.seeders;
+
+import ballerina/http;
+import ballerina/io;
 
 // Configuration
 configurable int serverPort = 8080;
@@ -39,26 +40,26 @@ public function main(string... args) returns error? {
 
 function runMigrations() returns error? {
     io:println("🔄 Running database migrations...");
-    migrations:MigrationManager migrationManager = new(database:getDbClient());
+    migrations:MigrationManager migrationManager = new (database:getDbClient());
     check migrationManager.migrate();
     return;
 }
 
 function rollbackMigration() returns error? {
     io:println("⏪ Rolling back last migration...");
-    migrations:MigrationManager migrationManager = new(database:getDbClient());
+    migrations:MigrationManager migrationManager = new (database:getDbClient());
     check migrationManager.rollbackMigration();
     return;
 }
 
 function runSeeders() returns error? {
-    seeders:DatabaseSeeder seeder = new(database:getDbClient());
+    seeders:DatabaseSeeder seeder = new (database:getDbClient());
     check seeder.seed();
     return;
 }
 
 function freshDatabase() returns error? {
-    seeders:DatabaseSeeder seeder = new(database:getDbClient());
+    seeders:DatabaseSeeder seeder = new (database:getDbClient());
     check seeder.fresh();
     return;
 }
@@ -69,7 +70,7 @@ function startServer() returns error? {
     if dbInitResult is error {
         return dbInitResult;
     }
-    
+
     io:println(string `🚀 Auth Server starting on port ${serverPort}...`);
     io:println("Available endpoints:");
     io:println("  GET  /health   - Health check");
@@ -80,7 +81,15 @@ function startServer() returns error? {
     return;
 }
 
-// HTTP service
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://localhost:3000"],
+        allowCredentials: true,
+        allowHeaders: ["Content-Type", "Authorization"],
+        allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        exposeHeaders: ["Content-Type"]
+    }
+}
 service / on new http:Listener(serverPort) {
 
     // Health check endpoint
@@ -91,7 +100,7 @@ service / on new http:Listener(serverPort) {
     // User registration endpoint
     resource function post register(http:Caller caller, http:Request req) returns error? {
         json|http:ClientError payload = req.getJsonPayload();
-        
+
         if payload is http:ClientError {
             http:Response response = new;
             response.statusCode = 400;
@@ -117,7 +126,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for registration
         models:AuthResponse|models:ErrorResponse result = auth:registerUser(userReg);
-        
+
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -135,7 +144,7 @@ service / on new http:Listener(serverPort) {
     // User login endpoint
     resource function post login(http:Caller caller, http:Request req) returns error? {
         json|http:ClientError payload = req.getJsonPayload();
-        
+
         if payload is http:ClientError {
             http:Response response = new;
             response.statusCode = 400;
@@ -161,7 +170,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for login
         models:AuthResponse|models:ErrorResponse result = auth:loginUser(userLogin);
-        
+
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -207,7 +216,7 @@ service / on new http:Listener(serverPort) {
 
         // Use auth module for profile
         models:User|models:ErrorResponse result = auth:getUserProfile(token);
-        
+
         if result is models:ErrorResponse {
             http:Response response = new;
             response.statusCode = result.code;
@@ -222,6 +231,8 @@ service / on new http:Listener(serverPort) {
             username: result.username,
             email: result.email,
             id: result.id,
+            is_admin: result.is_admin,
+            role: result.role,
             created_at: result.created_at,
             message: "Profile retrieved successfully"
         });

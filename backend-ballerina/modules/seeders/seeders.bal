@@ -34,18 +34,18 @@ public class DatabaseSeeder {
 
         // Sample users data
         models:UserRegistration[] sampleUsers = [
-            {username: "admin", email: "admin@example.com", password: "admin123"},
-            {username: "john_doe", email: "john@example.com", password: "password123"},
-            {username: "jane_smith", email: "jane@example.com", password: "password123"},
-            {username: "test_user", email: "test@example.com", password: "test123"}
+            {username: "admin", email: "admin@codearena.com", password: "password"},
+            {username: "john", email: "john@example.com", password: "password"},
+            {username: "jane", email: "jane@example.com", password: "password"},
+            {username: "test", email: "test@example.com", password: "password"}
         ];
 
         foreach models:UserRegistration user in sampleUsers {
             string hashedPassword = crypto:hashSha256(user.password.toBytes()).toBase64();
 
             sql:ExecutionResult|error result = self.dbClient->execute(`
-                INSERT INTO users (username, email, password_hash) 
-                VALUES (${user.username}, ${user.email}, ${hashedPassword})
+                INSERT INTO users (username, email, password_hash, is_admin, role) 
+                VALUES (${user.username}, ${user.email}, ${hashedPassword}, ${user.username == "admin"}, ${user.username == "admin" ? "admin" : "user"})
             `);
 
             if result is error {
