@@ -202,22 +202,32 @@ public MigrationInfo[] MIGRATIONS = [
     },
     {
         version: 2,
-        name: "002_create_roles_table",
-        execute: createRolesTable
+        name: "002_create_challenges_table",
+        execute: createChallengesTable
     },
     {
         version: 3,
-        name: "003_create_user_roles_table",
-        execute: createUserRolesTable
+        name: "003_create_test_cases_table",
+        execute: createTestCasesTable
     },
     {
         version: 4,
-        name: "004_create_settings_table",
-        execute: createSettingsTable
+        name: "004_create_contests_table",
+        execute: createContestsTable
     },
     {
         version: 5,
-        name: "005_create_logs_table",
-        execute: createLogsTable
+        name: "005_create_contest_challenges_table",
+        execute: createContestChallengesTable
+    },
+    {
+        version: 6,
+        name: "006_create_contest_participants_table",
+        execute: createContestParticipantsTable
+    },
+    {
+        version: 7,
+        name: "007_create_submissions_table",
+        execute: createSubmissionsTable
     }
 ];
