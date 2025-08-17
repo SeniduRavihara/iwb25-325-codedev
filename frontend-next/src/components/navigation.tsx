@@ -7,35 +7,47 @@ import {
   BarChart3,
   ChevronDown,
   Code,
-  Home,
   LogOut,
   Settings,
-  Timer,
+  Shield,
   Trophy,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-const navigation = [
-  { name: "Home", href: "/", icon: Home },
-  { name: "Challenges", href: "/challenges", icon: Code },
-  { name: "Contests", href: "/contests", icon: Trophy },
-  { name: "Leaderboard", href: "/leaderboard", icon: BarChart3 },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Timer", href: "/timer", icon: Timer },
+// Navigation items for authenticated users
+const userNavigation = [{ name: "Contests", href: "/contests", icon: Trophy }];
+
+// Navigation items for admin users
+const adminNavigation = [
+  { name: "Contests", href: "/admin/contests", icon: Trophy },
+  { name: "Challenges", href: "/admin/challenges", icon: Code },
+  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ];
 
 export function Navigation() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client flag to prevent hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleLogout = () => {
     logout();
     setIsDropdownOpen(false);
   };
+
+  // Determine which navigation to show
+  const navigation =
+    isAuthenticated && user?.role === "admin"
+      ? adminNavigation
+      : userNavigation;
 
   return (
     <nav className="bg-card border-b border-border">
@@ -45,34 +57,37 @@ export function Navigation() {
             <Link href="/" className="flex items-center space-x-2">
               <Code className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold text-foreground">
-                CodeArena
+                HackathonPlus
               </span>
             </Link>
 
-            <div className="hidden md:flex space-x-4">
-              {navigation.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                      pathname === item.href
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {/* Show navigation only for authenticated users */}
+            {isClient && isAuthenticated && (
+              <div className="hidden md:flex space-x-4">
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                        pathname === item.href
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-4">
-            {isAuthenticated ? (
+            {isClient && isAuthenticated ? (
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -81,6 +96,9 @@ export function Navigation() {
                 >
                   <User className="h-4 w-4" />
                   <span>{user?.username}</span>
+                  {user?.role === "admin" && (
+                    <Shield className="h-4 w-4 text-yellow-500" />
+                  )}
                   <ChevronDown className="h-4 w-4" />
                 </Button>
 
@@ -122,7 +140,7 @@ export function Navigation() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : isClient && !isAuthenticated ? (
               <>
                 <Button variant="ghost" asChild>
                   <Link href="/login">Login</Link>
@@ -131,6 +149,9 @@ export function Navigation() {
                   <Link href="/signup">Sign Up</Link>
                 </Button>
               </>
+            ) : (
+              // Show loading state during SSR
+              <div className="w-20 h-8 bg-muted animate-pulse rounded"></div>
             )}
           </div>
         </div>

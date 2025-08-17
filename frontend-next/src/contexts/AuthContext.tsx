@@ -35,9 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
-  // Check for existing token on mount
+  // Set client flag to prevent hydration mismatch
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Check for existing token on mount (only on client)
+  useEffect(() => {
+    if (!isClient) return;
+
     const storedToken = localStorage.getItem("auth_token");
     if (storedToken) {
       setToken(storedToken);
@@ -46,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, []);
+  }, [isClient]);
 
   const verifyToken = async (token: string) => {
     try {

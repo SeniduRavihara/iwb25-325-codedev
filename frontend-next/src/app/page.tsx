@@ -1,15 +1,30 @@
-import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
-import { AutoTyping } from "@/components/auto-typing"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Code, Trophy, Users, Zap, Target, Rocket, Star, ArrowRight, Play } from "lucide-react"
-import Link from "next/link"
+import { AutoTyping } from "@/components/auto-typing";
+import { Footer } from "@/components/footer";
+import { Navigation } from "@/components/navigation";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ArrowRight,
+  Code,
+  Play,
+  Rocket,
+  Star,
+  Target,
+  Trophy,
+  Users,
+  Zap,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function HomePage() {
-  console.log("[v0] HomePage component rendering")
+  console.log("[v0] HomePage component rendering");
 
   const typingPhrases = [
     "JOIN to make great coding career",
@@ -17,7 +32,7 @@ export default function HomePage() {
     "Compete with top developers",
     "Master algorithmic thinking",
     "Launch your tech career",
-  ]
+  ];
 
   const features = [
     {
@@ -30,52 +45,57 @@ export default function HomePage() {
     {
       icon: Trophy,
       title: "Competitive Contests",
-      description: "Participate in timed contests and compete with developers worldwide to climb the leaderboard.",
+      description:
+        "Participate in timed contests and compete with developers worldwide to climb the leaderboard.",
       color: "text-yellow-400",
     },
     {
       icon: Users,
       title: "Community Learning",
-      description: "Join a vibrant community of developers, share solutions, and learn from each other's approaches.",
+      description:
+        "Join a vibrant community of developers, share solutions, and learn from each other's approaches.",
       color: "text-green-400",
     },
     {
       icon: Zap,
       title: "Real-time Coding",
-      description: "Practice with our advanced Monaco editor supporting multiple programming languages.",
+      description:
+        "Practice with our advanced Monaco editor supporting multiple programming languages.",
       color: "text-purple-400",
     },
     {
       icon: Target,
       title: "Skill Assessment",
-      description: "Track your progress with detailed analytics and performance metrics across different topics.",
+      description:
+        "Track your progress with detailed analytics and performance metrics across different topics.",
       color: "text-red-400",
     },
     {
       icon: Rocket,
       title: "Career Growth",
-      description: "Build a strong portfolio and showcase your skills to potential employers and recruiters.",
+      description:
+        "Build a strong portfolio and showcase your skills to potential employers and recruiters.",
       color: "text-indigo-400",
     },
-  ]
+  ];
 
   const stats = [
     { label: "Active Developers", value: "50K+" },
     { label: "Coding Challenges", value: "1,200+" },
     { label: "Contests Hosted", value: "500+" },
     { label: "Success Stories", value: "10K+" },
-  ]
+  ];
 
   const faqs = [
     {
-      question: "What is CodeArena?",
+      question: "What is HackathonPlus?",
       answer:
-        "CodeArena is a comprehensive platform for developers to improve their coding skills through challenges, contests, and community interaction. We provide a professional environment for algorithmic problem-solving and career development.",
+        "HackathonPlus is a comprehensive platform for developers to improve their coding skills through challenges, contests, and community interaction. We provide a professional environment for algorithmic problem-solving and career development.",
     },
     {
       question: "How do I get started?",
       answer:
-        "Simply create an account, browse our collection of challenges, and start solving problems. You can participate in contests, track your progress, and connect with other developers in our community.",
+        "Simply create an account, browse our collection of contests, and start participating. You can join contests, track your progress, and connect with other developers in our community.",
     },
     {
       question: "What programming languages are supported?",
@@ -95,9 +115,9 @@ export default function HomePage() {
     {
       question: "Can I create my own challenges?",
       answer:
-        "Registered users can create and share their own coding challenges with the community. This helps foster collaborative learning and knowledge sharing.",
+        "Only admin users can create and manage coding challenges. This ensures quality control and maintains the integrity of our platform.",
     },
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,7 +138,8 @@ export default function HomePage() {
             </h1>
 
             <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Master algorithmic thinking, compete with top developers, and build the coding career of your dreams.
+              Master algorithmic thinking, compete with top developers, and
+              build the coding career of your dreams.
             </p>
 
             <div className="h-16 flex items-center justify-center">
@@ -134,10 +155,15 @@ export default function HomePage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" className="px-8 py-4 text-lg bg-transparent" asChild>
-                <Link href="/challenges">
+              <Button
+                variant="outline"
+                size="lg"
+                className="px-8 py-4 text-lg bg-transparent"
+                asChild
+              >
+                <Link href="/contests">
                   <Play className="mr-2 h-5 w-5" />
-                  Explore Challenges
+                  Explore Contests
                 </Link>
               </Button>
             </div>
@@ -151,8 +177,12 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">{stat.value}</div>
-                <div className="text-muted-foreground font-medium">{stat.label}</div>
+                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                  {stat.value}
+                </div>
+                <div className="text-muted-foreground font-medium">
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
@@ -163,15 +193,21 @@ export default function HomePage() {
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Why Choose CodeArena?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Why Choose HackathonPlus?
+            </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to excel in your coding journey, all in one platform.
+              Everything you need to excel in your coding journey, all in one
+              platform.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="group hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <Card
+                key={index}
+                className="group hover:shadow-lg transition-all duration-300 hover:scale-105"
+              >
                 <CardHeader>
                   <div
                     className={`w-12 h-12 rounded-lg bg-card flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
@@ -196,7 +232,8 @@ export default function HomePage() {
             Ready to Transform Your Coding Career?
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of developers who have already started their journey to coding excellence.
+            Join thousands of developers who have already started their journey
+            to coding excellence.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="px-8 py-4 text-lg" asChild>
@@ -205,7 +242,12 @@ export default function HomePage() {
                 <Star className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="px-8 py-4 text-lg bg-transparent" asChild>
+            <Button
+              variant="outline"
+              size="lg"
+              className="px-8 py-4 text-lg bg-transparent"
+              asChild
+            >
               <Link href="/contests">View Contests</Link>
             </Button>
           </div>
@@ -216,17 +258,27 @@ export default function HomePage() {
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Frequently Asked Questions</h2>
-            <p className="text-xl text-muted-foreground">Everything you need to know about CodeArena</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Everything you need to know about HackathonPlus
+            </p>
           </div>
 
           <Accordion type="single" collapsible className="space-y-4">
             {faqs.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`} className="border border-border rounded-lg px-6">
+              <AccordionItem
+                key={index}
+                value={`item-${index}`}
+                className="border border-border rounded-lg px-6"
+              >
                 <AccordionTrigger className="text-left font-semibold hover:text-primary">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground pt-2">{faq.answer}</AccordionContent>
+                <AccordionContent className="text-muted-foreground pt-2">
+                  {faq.answer}
+                </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
@@ -235,5 +287,5 @@ export default function HomePage() {
 
       <Footer />
     </div>
-  )
+  );
 }

@@ -133,7 +133,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
                   <Label htmlFor="difficulty">Difficulty</Label>
                   <Select
                     value={formData.difficulty}
-                    onValueChange={(value) => setFormData({ ...formData, difficulty: value })}
+                    onValueChange={(value: any) => setFormData({ ...formData, difficulty: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select difficulty" />

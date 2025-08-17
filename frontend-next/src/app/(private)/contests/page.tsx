@@ -1,34 +1,73 @@
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockContests } from "@/lib/mock-data"
-import { Plus, Search, Clock, Users, Trophy, Calendar } from "lucide-react"
-import Link from "next/link"
+"use client";
+
+import { Navigation } from "@/components/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { mockContests } from "@/lib/mock-data";
+import { Calendar, Clock, Plus, Search, Trophy, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function ContestsPage() {
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Show loading or redirect if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
-        return "default"
+        return "default";
       case "active":
-        return "destructive"
+        return "destructive";
       case "completed":
-        return "secondary"
+        return "secondary";
       default:
-        return "default"
+        return "default";
     }
-  }
+  };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString()
-  }
+    return new Date(dateString).toLocaleString();
+  };
 
   const getChallengeCount = (challengeIds: string[]) => {
-    return challengeIds.length
-  }
+    return challengeIds.length;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,15 +78,19 @@ export default function ContestsPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Contests</h1>
             <p className="text-muted-foreground mt-2">
-              Participate in coding contests and compete with developers worldwide
+              Participate in coding contests and compete with developers
+              worldwide
             </p>
           </div>
-          <Button asChild>
-            <Link href="/contests/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Contest
-            </Link>
-          </Button>
+          {/* Only show Create Contest button for admin users */}
+          {user?.role === "admin" && (
+            <Button asChild>
+              <Link href="/admin/contests/create">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Contest
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Filters */}
@@ -83,35 +126,55 @@ export default function ContestsPage() {
         {/* Contests Grid */}
         <div className="grid gap-6">
           {mockContests.map((contest) => (
-            <Card key={contest.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={contest.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-xl">
-                        <Link href={`/contests/${contest.id}`} className="hover:text-primary transition-colors">
+                        <Link
+                          href={`/contests/${contest.id}`}
+                          className="hover:text-primary transition-colors"
+                        >
                           {contest.title}
                         </Link>
                       </CardTitle>
                       <Badge variant={getStatusColor(contest.status)}>
-                        {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
+                        {contest.status.charAt(0).toUpperCase() +
+                          contest.status.slice(1)}
                       </Badge>
                     </div>
-                    <CardDescription className="mb-3">{contest.description}</CardDescription>
+                    <CardDescription className="mb-3">
+                      {contest.description}
+                    </CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/contests/${contest.id}/edit`}>Edit</Link>
-                    </Button>
-                    {contest.status === "upcoming" && <Button size="sm">Register</Button>}
+                    {/* Only show Edit button for admin users */}
+                    {user?.role === "admin" && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/contests/${contest.id}/edit`}>
+                          Edit
+                        </Link>
+                      </Button>
+                    )}
+                    {contest.status === "upcoming" && (
+                      <Button size="sm">Register</Button>
+                    )}
                     {contest.status === "active" && (
                       <Button size="sm" asChild>
-                        <Link href={`/contests/${contest.id}/participate`}>Join Now</Link>
+                        <Link href={`/contests/${contest.id}/participate`}>
+                          Join Now
+                        </Link>
                       </Button>
                     )}
                     {contest.status === "completed" && (
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/contests/${contest.id}/results`}>View Results</Link>
+                        <Link href={`/contests/${contest.id}/results`}>
+                          View Results
+                        </Link>
                       </Button>
                     )}
                   </div>
@@ -131,7 +194,8 @@ export default function ContestsPage() {
                     <div>
                       <div className="font-medium">Duration</div>
                       <div>
-                        {Math.floor(contest.duration / 60)}h {contest.duration % 60}m
+                        {Math.floor(contest.duration / 60)}h{" "}
+                        {contest.duration % 60}m
                       </div>
                     </div>
                   </div>
@@ -141,7 +205,9 @@ export default function ContestsPage() {
                       <div className="font-medium">Participants</div>
                       <div>
                         {contest.participants}
-                        {contest.maxParticipants ? `/${contest.maxParticipants}` : ""}
+                        {contest.maxParticipants
+                          ? `/${contest.maxParticipants}`
+                          : ""}
                       </div>
                     </div>
                   </div>
@@ -149,17 +215,25 @@ export default function ContestsPage() {
                     <Trophy className="h-4 w-4" />
                     <div>
                       <div className="font-medium">Problems</div>
-                      <div>{getChallengeCount(contest.challenges)} challenges</div>
+                      <div>
+                        {getChallengeCount(contest.challenges)} challenges
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {contest.prizes.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-border">
-                    <div className="text-sm font-medium text-muted-foreground mb-2">Prizes:</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Prizes:
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {contest.prizes.map((prize, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {prize}
                         </Badge>
                       ))}
@@ -172,5 +246,5 @@ export default function ContestsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
