@@ -1,6 +1,4 @@
-import ballerina/file;
 import ballerina/io;
-import ballerina/regex;
 import ballerina/sql;
 import ballerinax/java.jdbc;
 
@@ -11,20 +9,22 @@ public type Migration record {|
     string executed_at;
 |};
 
-public type MigrationFile record {|
+// Migration function type
+public type MigrationFunction function (jdbc:Client) returns error?;
+
+// Migration record type
+public type MigrationInfo record {|
     int version;
-    string filename;
-    string content;
+    string name;
+    MigrationFunction execute;
 |};
 
 // Migration manager class
 public class MigrationManager {
     private final jdbc:Client dbClient;
-    private final string migrationsPath;
 
-    public function init(jdbc:Client dbClient, string migrationsPath = "./resources/migrations/") {
+    public function init(jdbc:Client dbClient) {
         self.dbClient = dbClient;
-        self.migrationsPath = migrationsPath;
     }
 
     // Initialize migrations table
@@ -67,74 +67,31 @@ public class MigrationManager {
     }
 
     // Get pending migrations
-    public function getPendingMigrations() returns MigrationFile[]|error {
-        MigrationFile[] pendingMigrations = [];
-
-        // Try to read migrations directory
-        file:MetaData[]|file:Error files = file:readDir(self.migrationsPath);
-        if files is file:Error {
-            io:println("No migrations directory found or error reading: " + files.message());
-            return pendingMigrations;
-        }
-
+    public function getPendingMigrations() returns MigrationInfo[]|error {
         // Get executed migrations
         string[]|error executedMigrations = self.getExecutedMigrations();
         if executedMigrations is error {
             return executedMigrations;
         }
 
-        foreach file:MetaData fileInfo in files {
-            if fileInfo.dir {
-                continue;
-            }
+        MigrationInfo[] pendingMigrations = [];
 
-            // Fixed filename extraction logic
-            string filename = self.extractFilename(fileInfo.absPath);
-
-            // Debug: print the extracted filename
-            io:println("Extracted filename: ", filename);
-
-            // Check if it's a SQL file
-            if !filename.endsWith(".sql") {
-                continue;
-            }
-
+        // Check each migration in the registry
+        foreach MigrationInfo migration in MIGRATIONS {
             // Check if already executed
             boolean isExecuted = false;
             foreach string executed in executedMigrations {
-                if executed == filename {
+                if executed == migration.name {
                     isExecuted = true;
                     break;
                 }
             }
 
-            io:println("File: ", filename, " - isExecuted: ", isExecuted);
+            io:println("Migration: ", migration.name, " - isExecuted: ", isExecuted);
 
             if !isExecuted {
-                // Parse version from filename (e.g., 001_create_users_table.sql)
-                string[] parts = regex:split(filename, "_");
-                io:println("Filename parts: ", parts);
-
-                if parts.length() > 0 {
-                    int|error version = int:fromString(parts[0]);
-                    io:println("Parsing version from '", parts[0], "': ", version);
-
-                    if version is int {
-                        string|io:Error content = io:fileReadString(fileInfo.absPath);
-                        if content is string {
-                            pendingMigrations.push({
-                                version: version,
-                                filename: filename,
-                                content: content
-                            });
-                            io:println("✓ Added migration: ", filename, " (version: ", version, ")");
-                        } else {
-                            io:println("✗ Failed to read file content: ", filename);
-                        }
-                    } else {
-                        io:println("✗ Invalid version format in filename: ", filename);
-                    }
-                }
+                pendingMigrations.push(migration);
+                io:println("✓ Added migration: ", migration.name, " (version: ", migration.version, ")");
             }
         }
 
@@ -145,37 +102,15 @@ public class MigrationManager {
         return pendingMigrations;
     }
 
-    // Helper function to extract filename from path
-    private function extractFilename(string absPath) returns string {
-        // Handle both Windows and Unix paths
-        string[] pathParts;
-
-        if absPath.includes("\\") {
-            // Windows path - split by backslash
-            pathParts = regex:split(absPath, "\\\\");
-        } else {
-            // Unix path - split by forward slash
-            pathParts = regex:split(absPath, "/");
-        }
-
-        // Return the last part (filename)
-        if pathParts.length() > 0 {
-            return pathParts[pathParts.length() - 1];
-        }
-
-        // Fallback: return the original path if splitting failed
-        return absPath;
-    }
-
     // Helper function to sort migrations by version
-    private function sortMigrationsByVersion(MigrationFile[] migrations) returns MigrationFile[] {
+    private function sortMigrationsByVersion(MigrationInfo[] migrations) returns MigrationInfo[] {
         // Simple bubble sort by version
         int n = migrations.length();
 
         foreach int i in 0 ..< n {
             foreach int j in 0 ..< (n - i - 1) {
                 if migrations[j].version > migrations[j + 1].version {
-                    MigrationFile temp = migrations[j];
+                    MigrationInfo temp = migrations[j];
                     migrations[j] = migrations[j + 1];
                     migrations[j + 1] = temp;
                 }
@@ -189,7 +124,7 @@ public class MigrationManager {
     public function migrate() returns error? {
         check self.initMigrationsTable();
 
-        MigrationFile[]|error pendingMigrations = self.getPendingMigrations();
+        MigrationInfo[]|error pendingMigrations = self.getPendingMigrations();
         if pendingMigrations is error {
             return pendingMigrations;
         }
@@ -201,28 +136,26 @@ public class MigrationManager {
 
         io:println(string `Running ${pendingMigrations.length()} migrations...`);
 
-        foreach MigrationFile migration in pendingMigrations {
-            io:println(string `Executing: ${migration.filename}`);
+        foreach MigrationInfo migration in pendingMigrations {
+            io:println(string `Executing: ${migration.name}`);
 
-            // Execute migration SQL
-            sql:ParameterizedQuery query = `${migration.content}`;
-            io:println(query);
-
-            sql:ExecutionResult|error result = self.dbClient->execute(query);
+            // Execute the migration function
+            MigrationFunction func = migration.execute;
+            error? result = func(self.dbClient);
             if result is error {
-                return error(string `Failed to execute migration ${migration.filename}: ${result.message()}`);
+                return error(string `Failed to execute migration ${migration.name}: ${result.message()}`);
             }
 
             // Mark as executed
             sql:ExecutionResult|error insertResult = self.dbClient->execute(`
-                INSERT INTO migrations (filename) VALUES (${migration.filename})
+                INSERT INTO migrations (filename) VALUES (${migration.name})
             `);
 
             if insertResult is error {
-                return error(string `Failed to record migration ${migration.filename}: ${insertResult.message()}`);
+                return error(string `Failed to record migration ${migration.name}: ${insertResult.message()}`);
             }
 
-            io:println(string `✓ ${migration.filename} executed successfully`);
+            io:println(string `✓ ${migration.name} executed successfully`);
         }
 
         io:println("✓ All migrations completed successfully");
@@ -247,7 +180,7 @@ public class MigrationManager {
 
         io:println(string `Rolling back: ${lastMigration.value.filename}`);
 
-        // Remove from migrations table
+        // Remove from migrations table using parameterized query
         sql:ExecutionResult|error result = self.dbClient->execute(`
             DELETE FROM migrations WHERE id = ${lastMigration.value.id}
         `);
@@ -258,4 +191,103 @@ public class MigrationManager {
 
         io:println("✓ Rollback completed (Note: Schema changes not automatically reverted)");
     }
+}
+
+// Migration functions registry
+public MigrationInfo[] MIGRATIONS = [
+    {
+        version: 1,
+        name: "001_create_users_table",
+        execute: createUsersTable
+    },
+    {
+        version: 2,
+        name: "002_create_roles_table",
+        execute: createRolesTable
+    },
+    {
+        version: 3,
+        name: "003_create_user_roles_table",
+        execute: createUserRolesTable
+    }
+];
+
+// Migration function implementations
+public function createUsersTable(jdbc:Client dbClient) returns error? {
+    io:println("Executing: 001_create_users_table");
+
+    sql:ExecutionResult|error result = dbClient->execute(`
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    if result is error {
+        return error("Failed to create users table: " + result.message());
+    }
+
+    // Create indexes
+    sql:ExecutionResult|error indexResult1 = dbClient->execute(`
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)
+    `);
+
+    if indexResult1 is error {
+        return error("Failed to create username index: " + indexResult1.message());
+    }
+
+    sql:ExecutionResult|error indexResult2 = dbClient->execute(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
+    `);
+
+    if indexResult2 is error {
+        return error("Failed to create email index: " + indexResult2.message());
+    }
+
+    io:println("✓ Users table created successfully");
+}
+
+public function createRolesTable(jdbc:Client dbClient) returns error? {
+    io:println("Executing: 002_create_roles_table");
+
+    sql:ExecutionResult|error result = dbClient->execute(`
+        CREATE TABLE IF NOT EXISTS roles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    if result is error {
+        return error("Failed to create roles table: " + result.message());
+    }
+
+    io:println("✓ Roles table created successfully");
+}
+
+public function createUserRolesTable(jdbc:Client dbClient) returns error? {
+    io:println("Executing: 003_create_user_roles_table");
+
+    sql:ExecutionResult|error result = dbClient->execute(`
+        CREATE TABLE IF NOT EXISTS user_roles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            role_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+            UNIQUE(user_id, role_id)
+        )
+    `);
+
+    if result is error {
+        return error("Failed to create user_roles table: " + result.message());
+    }
+
+    io:println("✓ User roles table created successfully");
 }
