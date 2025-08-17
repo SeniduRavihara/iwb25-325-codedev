@@ -127,7 +127,7 @@ export default function ContestsPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/admin/contests/add">
+            <Link href="/admin/contests/1/edit">
               <Plus className="h-4 w-4 mr-2" />
               Create Contest
             </Link>
