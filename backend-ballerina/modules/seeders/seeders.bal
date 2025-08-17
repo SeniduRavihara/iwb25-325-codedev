@@ -1,7 +1,8 @@
-import ballerina/sql;
-import ballerina/io;
-import ballerina/crypto;
 import backend_ballerina.models;
+
+import ballerina/crypto;
+import ballerina/io;
+import ballerina/sql;
 import ballerinax/java.jdbc;
 
 public class DatabaseSeeder {
@@ -16,16 +17,16 @@ public class DatabaseSeeder {
         io:println("Seeding users...");
 
         // Check if users already exist
-        stream<record {|int count;|}, sql:Error?> countStream = 
+        stream<record {|int count;|}, sql:Error?> countStream =
             self.dbClient->query(`SELECT COUNT(*) as count FROM users`);
-        
+
         record {|record {|int count;|} value;|}|error? countResult = countStream.next();
         error? closeResult = countStream.close();
-        
+
         if closeResult is error {
             return closeResult;
         }
-        
+
         if countResult is record {|record {|int count;|} value;|} && countResult.value.count > 0 {
             io:println("Users already exist, skipping seeding");
             return;
@@ -33,24 +34,24 @@ public class DatabaseSeeder {
 
         // Sample users data
         models:UserRegistration[] sampleUsers = [
-            {username: "admin", email: "admin@example.com", password: "admin123"},
-            {username: "john_doe", email: "john@example.com", password: "password123"},
-            {username: "jane_smith", email: "jane@example.com", password: "password123"},
-            {username: "test_user", email: "test@example.com", password: "test123"}
+            {username: "admin", email: "admin@codearena.com", password: "password"},
+            {username: "john", email: "john@example.com", password: "password"},
+            {username: "jane", email: "jane@example.com", password: "password"},
+            {username: "test", email: "test@example.com", password: "password"}
         ];
 
         foreach models:UserRegistration user in sampleUsers {
             string hashedPassword = crypto:hashSha256(user.password.toBytes()).toBase64();
-            
+
             sql:ExecutionResult|error result = self.dbClient->execute(`
-                INSERT INTO users (username, email, password_hash) 
-                VALUES (${user.username}, ${user.email}, ${hashedPassword})
+                INSERT INTO users (username, email, password_hash, is_admin, role) 
+                VALUES (${user.username}, ${user.email}, ${hashedPassword}, ${user.username == "admin"}, ${user.username == "admin" ? "admin" : "user"})
             `);
-            
+
             if result is error {
                 return error(string `Failed to seed user ${user.username}: ${result.message()}`);
             }
-            
+
             io:println(string `✓ User '${user.username}' created`);
         }
 
@@ -67,11 +68,11 @@ public class DatabaseSeeder {
             sql:ExecutionResult|error result = self.dbClient->execute(`
                 INSERT OR IGNORE INTO roles (name) VALUES (${role})
             `);
-            
+
             if result is error {
                 return error(string `Failed to seed role ${role}: ${result.message()}`);
             }
-            
+
             io:println(string `✓ Role '${role}' created`);
         }
 
@@ -81,24 +82,24 @@ public class DatabaseSeeder {
     // Run all seeders
     public function seed() returns error? {
         io:println("🌱 Starting database seeding...");
-        
+
         check self.seedUsers();
         // check self.seedRoles(); // Uncomment if you have roles table
-        
+
         io:println("✅ Database seeding completed successfully");
     }
 
     // Clear all seeded data
     public function fresh() returns error? {
         io:println("🧹 Clearing database...");
-        
+
         sql:ExecutionResult|error result = self.dbClient->execute(`DELETE FROM users`);
         if result is error {
             return result;
         }
-        
+
         io:println("✓ Database cleared");
-        
+
         // Reset auto-increment
         sql:ExecutionResult|error resetResult = self.dbClient->execute(`
             DELETE FROM sqlite_sequence WHERE name='users'
@@ -106,9 +107,9 @@ public class DatabaseSeeder {
         if resetResult is error {
             return resetResult;
         }
-        
+
         io:println("✓ Auto-increment reset");
-        
+
         // Run seeding again
         check self.seed();
     }

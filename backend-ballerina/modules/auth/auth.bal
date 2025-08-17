@@ -54,7 +54,9 @@ public function registerUser(models:UserRegistration userReg) returns models:Aut
     return {
         message: "User registered successfully",
         username: userReg.username,
-        email: userReg.email
+        email: userReg.email,
+        is_admin: false,
+        role: "user"
     };
 }
 
@@ -86,6 +88,8 @@ public function loginUser(models:UserLogin userLogin) returns models:AuthRespons
         token: token,
         username: user.username,
         email: user.email,
+        is_admin: user.is_admin,
+        role: user.role,
         message: "Login successful"
     };
 }

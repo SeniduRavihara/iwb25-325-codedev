@@ -1,6 +1,4 @@
-import ballerina/file;
 import ballerina/io;
-import ballerina/regex;
 import ballerina/sql;
 import ballerinax/java.jdbc;
 
@@ -11,20 +9,22 @@ public type Migration record {|
     string executed_at;
 |};
 
-public type MigrationFile record {|
+// Migration function type
+public type MigrationFunction function (jdbc:Client) returns error?;
+
+// Migration record type
+public type MigrationInfo record {|
     int version;
-    string filename;
-    string content;
+    string name;
+    MigrationFunction execute;
 |};
 
 // Migration manager class
 public class MigrationManager {
     private final jdbc:Client dbClient;
-    private final string migrationsPath;
 
-    public function init(jdbc:Client dbClient, string migrationsPath = "./resources/migrations/") {
+    public function init(jdbc:Client dbClient) {
         self.dbClient = dbClient;
-        self.migrationsPath = migrationsPath;
     }
 
     // Initialize migrations table
@@ -67,22 +67,17 @@ public class MigrationManager {
     }
 
     // Get pending migrations
-    public function getPendingMigrations() returns MigrationFile[]|error {
-        MigrationFile[] pendingMigrations = [];
-
-        // Try to read migrations directory
-        file:MetaData[]|file:Error files = file:readDir(self.migrationsPath);
-        if files is file:Error {
-            io:println("No migrations directory found or error reading: " + files.message());
-            return pendingMigrations;
-        }
-
+    public function getPendingMigrations() returns MigrationInfo[]|error {
         // Get executed migrations
         string[]|error executedMigrations = self.getExecutedMigrations();
         if executedMigrations is error {
             return executedMigrations;
         }
 
+        MigrationInfo[] pendingMigrations = [];
+
+        // Check each migration in the registry
+        foreach MigrationInfo migration in MIGRATIONS {
         foreach file:MetaData fileInfo in files {
             if fileInfo.dir {
                 continue;
@@ -102,15 +97,17 @@ public class MigrationManager {
             // Check if already executed
             boolean isExecuted = false;
             foreach string executed in executedMigrations {
-                if executed == filename {
+                if executed == migration.name {
                     isExecuted = true;
                     break;
                 }
             }
 
-            io:println("File: ", filename, " - isExecuted: ", isExecuted);
+            io:println("Migration: ", migration.name, " - isExecuted: ", isExecuted);
 
             if !isExecuted {
+                pendingMigrations.push(migration);
+                io:println("✓ Added migration: ", migration.name, " (version: ", migration.version, ")");
                 // Parse version from filename (e.g., 001_create_users_table.txt)
                 string[] parts = regex:split(filename, "_");
                 io:println("Filename parts: ", parts);
@@ -145,37 +142,15 @@ public class MigrationManager {
         return pendingMigrations;
     }
 
-    // Helper function to extract filename from path
-    private function extractFilename(string absPath) returns string {
-        // Handle both Windows and Unix paths
-        string[] pathParts;
-
-        if absPath.includes("\\") {
-            // Windows path - split by backslash
-            pathParts = regex:split(absPath, "\\\\");
-        } else {
-            // Unix path - split by forward slash
-            pathParts = regex:split(absPath, "/");
-        }
-
-        // Return the last part (filename)
-        if pathParts.length() > 0 {
-            return pathParts[pathParts.length() - 1];
-        }
-
-        // Fallback: return the original path if splitting failed
-        return absPath;
-    }
-
     // Helper function to sort migrations by version
-    private function sortMigrationsByVersion(MigrationFile[] migrations) returns MigrationFile[] {
+    private function sortMigrationsByVersion(MigrationInfo[] migrations) returns MigrationInfo[] {
         // Simple bubble sort by version
         int n = migrations.length();
 
         foreach int i in 0 ..< n {
             foreach int j in 0 ..< (n - i - 1) {
                 if migrations[j].version > migrations[j + 1].version {
-                    MigrationFile temp = migrations[j];
+                    MigrationInfo temp = migrations[j];
                     migrations[j] = migrations[j + 1];
                     migrations[j + 1] = temp;
                 }
@@ -484,7 +459,7 @@ public class MigrationManager {
     public function migrate() returns error? {
         check self.initMigrationsTable();
 
-        MigrationFile[]|error pendingMigrations = self.getPendingMigrations();
+        MigrationInfo[]|error pendingMigrations = self.getPendingMigrations();
         if pendingMigrations is error {
             return pendingMigrations;
         }
@@ -496,9 +471,16 @@ public class MigrationManager {
 
         io:println(string `Running ${pendingMigrations.length()} migrations...`);
 
+        foreach MigrationInfo migration in pendingMigrations {
+            io:println(string `Executing: ${migration.name}`);
         foreach MigrationFile migration in pendingMigrations {
             io:println(string `🚀 Executing migration: ${migration.filename}`);
 
+            // Execute the migration function
+            MigrationFunction func = migration.execute;
+            error? result = func(self.dbClient);
+            if result is error {
+                return error(string `Failed to execute migration ${migration.name}: ${result.message()}`);
             // Execute migration SQL
             error? executionResult = self.executeMigrationSQL(migration.content);
             if executionResult is error {
@@ -507,13 +489,14 @@ public class MigrationManager {
 
             // Mark as executed
             sql:ExecutionResult|error insertResult = self.dbClient->execute(`
-                INSERT INTO migrations (filename) VALUES (${migration.filename})
+                INSERT INTO migrations (filename) VALUES (${migration.name})
             `);
 
             if insertResult is error {
-                return error(string `Failed to record migration ${migration.filename}: ${insertResult.message()}`);
+                return error(string `Failed to record migration ${migration.name}: ${insertResult.message()}`);
             }
 
+            io:println(string `✓ ${migration.name} executed successfully`);
             io:println(string `✅ ${migration.filename} executed successfully`);
         }
 
@@ -539,7 +522,7 @@ public class MigrationManager {
 
         io:println(string `Rolling back: ${lastMigration.value.filename}`);
 
-        // Remove from migrations table
+        // Remove from migrations table using parameterized query
         sql:ExecutionResult|error result = self.dbClient->execute(`
             DELETE FROM migrations WHERE id = ${lastMigration.value.id}
         `);
@@ -551,3 +534,32 @@ public class MigrationManager {
         io:println("✓ Rollback completed (Note: Schema changes not automatically reverted)");
     }
 }
+
+// Migration functions registry
+public MigrationInfo[] MIGRATIONS = [
+    {
+        version: 1,
+        name: "001_create_users_table",
+        execute: createUsersTable
+    },
+    {
+        version: 2,
+        name: "002_create_roles_table",
+        execute: createRolesTable
+    },
+    {
+        version: 3,
+        name: "003_create_user_roles_table",
+        execute: createUserRolesTable
+    },
+    {
+        version: 4,
+        name: "004_create_settings_table",
+        execute: createSettingsTable
+    },
+    {
+        version: 5,
+        name: "005_create_logs_table",
+        execute: createLogsTable
+    }
+];

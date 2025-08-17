@@ -1,8 +1,9 @@
-import ballerina/crypto;
-import ballerina/time;
-import ballerina/regex;
-import ballerina/mime;
 import backend_ballerina.models;
+
+import ballerina/crypto;
+import ballerina/mime;
+import ballerina/regex;
+import ballerina/time;
 
 // Configuration
 configurable string jwtSecret = "your-super-secret-jwt-key-change-this-in-production";
@@ -11,33 +12,33 @@ configurable string jwtSecret = "your-super-secret-jwt-key-change-this-in-produc
 public function generateToken(models:User user) returns string|error {
     time:Utc currentTime = time:utcNow();
     int currentTimestamp = <int>currentTime[0];
-    int expiryTime = currentTimestamp + 3600; // 1 hour
-    
+    int expiryTime = currentTimestamp + 604800; // 7 days (7 * 24 * 60 * 60)
+
     string headerStr = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
-    string payloadStr = string `{"iss":"ballerina-auth-server","sub":"${user.username}","aud":["ballerina-users"],"exp":${expiryTime},"iat":${currentTimestamp},"user_id":${user.id},"email":"${user.email}"}`;
-    
+    string payloadStr = string `{"iss":"ballerina-auth-server","sub":"${user.username}","aud":["ballerina-users"],"exp":${expiryTime},"iat":${currentTimestamp},"user_id":${user.id},"email":"${user.email}","is_admin":${user.is_admin},"role":"${user.role}"}`;
+
     // Base64URL encode header and payload
     byte[] headerBytes = headerStr.toBytes();
     byte[] payloadBytes = payloadStr.toBytes();
-    
+
     string headerB64 = headerBytes.toBase64();
     string payloadB64 = payloadBytes.toBase64();
-    
+
     // Make URL safe
     headerB64 = makeUrlSafe(headerB64);
     payloadB64 = makeUrlSafe(payloadB64);
-    
+
     string unsigned = headerB64 + "." + payloadB64;
-    
+
     // Create signature using HMAC SHA256
     byte[]|error signatureBytes = crypto:hmacSha256(unsigned.toBytes(), jwtSecret.toBytes());
     if signatureBytes is error {
         return signatureBytes;
     }
-    
+
     string signature = signatureBytes.toBase64();
     signature = makeUrlSafe(signature);
-    
+
     return unsigned + "." + signature;
 }
 
@@ -48,44 +49,44 @@ public function validateToken(string token) returns models:JwtPayload|error {
     if parts.length() != 3 {
         return error("Invalid token format");
     }
-    
+
     // Verify signature
     string unsigned = parts[0] + "." + parts[1];
     byte[]|error expectedSigBytes = crypto:hmacSha256(unsigned.toBytes(), jwtSecret.toBytes());
     if expectedSigBytes is error {
         return error("Signature verification failed");
     }
-    
+
     string expectedSig = expectedSigBytes.toBase64();
     expectedSig = makeUrlSafe(expectedSig);
-    
+
     if expectedSig != parts[2] {
         return error("Invalid signature");
     }
-    
+
     // Decode payload
     string payloadB64 = parts[1];
     payloadB64 = addPadding(payloadB64);
     payloadB64 = makeBase64Standard(payloadB64);
-    
+
     byte[]|mime:DecodeError payloadBytes = mime:base64DecodeBlob(payloadB64.toBytes());
     if payloadBytes is mime:DecodeError {
         return error("Invalid payload encoding");
     }
-    
+
     string|error payloadStr = string:fromBytes(payloadBytes);
     if payloadStr is error {
         return error("Invalid payload string conversion");
     }
-    
+
     json|error payloadJson = payloadStr.fromJsonString();
     if payloadJson is error {
         return error("Invalid payload JSON");
     }
-    
+
     // Extract fields
     map<json> payloadMap = <map<json>>payloadJson;
-    
+
     string? iss = <string?>payloadMap["iss"];
     string? sub = <string?>payloadMap["sub"];
     json? audJson = payloadMap["aud"];
@@ -93,7 +94,9 @@ public function validateToken(string token) returns models:JwtPayload|error {
     int? iat = <int?>payloadMap["iat"];
     int? user_id = <int?>payloadMap["user_id"];
     string? email = <string?>payloadMap["email"];
-    
+    boolean? is_admin = <boolean?>payloadMap["is_admin"];
+    string? role = <string?>payloadMap["role"];
+
     // Create aud array
     string[] audArray = [];
     if audJson is json[] {
@@ -103,7 +106,7 @@ public function validateToken(string token) returns models:JwtPayload|error {
             }
         }
     }
-    
+
     models:JwtPayload payload = {
         iss: iss ?: "",
         sub: sub ?: "",
@@ -111,17 +114,19 @@ public function validateToken(string token) returns models:JwtPayload|error {
         exp: exp ?: 0,
         iat: iat ?: 0,
         user_id: user_id,
-        email: email
+        email: email,
+        is_admin: is_admin ?: false,
+        role: role ?: "user"
     };
-    
+
     // Verify expiration
     time:Utc currentTime = time:utcNow();
     int currentTimestamp = <int>currentTime[0];
-    
+
     if payload.exp > 0 && payload.exp < currentTimestamp {
         return error("Token expired");
     }
-    
+
     return payload;
 }
 

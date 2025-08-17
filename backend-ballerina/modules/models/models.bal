@@ -6,6 +6,8 @@ public type User record {|
     string username;
     string email;
     string password_hash;
+    boolean is_admin;
+    string role;
     string created_at;
 |};
 
@@ -24,6 +26,8 @@ public type AuthResponse record {|
     string token?;
     string username;
     string email;
+    boolean is_admin;
+    string role;
     string message;
 |};
 
@@ -41,4 +45,6 @@ public type JwtPayload record {|
     int iat;
     int user_id?;
     string email?;
+    boolean is_admin;
+    string role;
 |};
