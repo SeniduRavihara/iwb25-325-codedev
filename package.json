@@ -10,10 +10,12 @@
         "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
     },
     "devDependencies": {
-        "concurrently": "^9.0.0"
+        "concurrently": "^9.0.0",
+        "tailwindcss": "^4.1.12"
     },
     "dependencies": {
         "deps": "^1.0.0",
-        "peer": "^1.0.2"
+        "peer": "^1.0.2",
+        "picocolors": "^1.1.1"
     }
 }
