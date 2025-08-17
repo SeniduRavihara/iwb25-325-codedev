@@ -395,7 +395,7 @@ export function CodeEditor({
                   </>
                 )}
               </div>
-            )}
+            ): null}
           </CardContent>
         </Card>
       )}
