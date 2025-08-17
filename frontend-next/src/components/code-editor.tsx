@@ -11,9 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import type { TestCase } from "@/lib/mock-data";
 import { apiService, type CodeExecutionResponse } from "@/lib/api";
-import { Download, Play, RotateCcw, Upload, AlertCircle } from "lucide-react";
+import type { TestCase } from "@/lib/mock-data";
+import { AlertCircle, Download, Play, RotateCcw, Upload } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
@@ -65,7 +65,8 @@ export function CodeEditor({
   );
   const [language, setLanguage] = useState(initialLanguage);
   const [isRunning, setIsRunning] = useState(false);
-  const [executionResult, setExecutionResult] = useState<CodeExecutionResponse | null>(null);
+  const [executionResult, setExecutionResult] =
+    useState<CodeExecutionResponse | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
@@ -268,7 +269,9 @@ export function CodeEditor({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge
-                      variant={executionResult.success ? "default" : "destructive"}
+                      variant={
+                        executionResult.success ? "default" : "destructive"
+                      }
                     >
                       {executionResult.success ? "SUCCESS" : "ERROR"}
                     </Badge>
@@ -289,10 +292,9 @@ export function CodeEditor({
                     Output:
                   </div>
                   <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-                    {executionResult.success 
-                      ? (executionResult.output || "No output")
-                      : (executionResult.error || "Execution failed")
-                    }
+                    {executionResult.success
+                      ? executionResult.output || "No output"
+                      : executionResult.error || "Execution failed"}
                   </pre>
                 </div>
 
@@ -300,20 +302,32 @@ export function CodeEditor({
                 {executionResult.performance && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                      <div className="font-medium text-muted-foreground">Memory Limit</div>
+                      <div className="font-medium text-muted-foreground">
+                        Memory Limit
+                      </div>
                       <div>{executionResult.performance.memoryLimit}</div>
                     </div>
                     <div>
-                      <div className="font-medium text-muted-foreground">CPU Limit</div>
+                      <div className="font-medium text-muted-foreground">
+                        CPU Limit
+                      </div>
                       <div>{executionResult.performance.cpuLimit}</div>
                     </div>
                     <div>
-                      <div className="font-medium text-muted-foreground">Process Limit</div>
+                      <div className="font-medium text-muted-foreground">
+                        Process Limit
+                      </div>
                       <div>{executionResult.performance.processLimit}</div>
                     </div>
                     <div>
-                      <div className="font-medium text-muted-foreground">Network</div>
-                      <div>{executionResult.performance.networkAccess ? "Enabled" : "Disabled"}</div>
+                      <div className="font-medium text-muted-foreground">
+                        Network
+                      </div>
+                      <div>
+                        {executionResult.performance.networkAccess
+                          ? "Enabled"
+                          : "Disabled"}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -326,22 +340,40 @@ export function CodeEditor({
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <div className="font-medium text-muted-foreground">Lines of Code</div>
+                        <div className="font-medium text-muted-foreground">
+                          Lines of Code
+                        </div>
                         <div>{executionResult.analysis.linesOfCode}</div>
                       </div>
                       <div>
-                        <div className="font-medium text-muted-foreground">Code Length</div>
+                        <div className="font-medium text-muted-foreground">
+                          Code Length
+                        </div>
                         <div>{executionResult.analysis.codeLength} chars</div>
                       </div>
                       {executionResult.analysis.estimatedComplexity && (
                         <>
                           <div>
-                            <div className="font-medium text-muted-foreground">Time Complexity</div>
-                            <div className="text-xs">{executionResult.analysis.estimatedComplexity.timeComplexity}</div>
+                            <div className="font-medium text-muted-foreground">
+                              Time Complexity
+                            </div>
+                            <div className="text-xs">
+                              {
+                                executionResult.analysis.estimatedComplexity
+                                  .timeComplexity
+                              }
+                            </div>
                           </div>
                           <div>
-                            <div className="font-medium text-muted-foreground">Space Complexity</div>
-                            <div className="text-xs">{executionResult.analysis.estimatedComplexity.spaceComplexity}</div>
+                            <div className="font-medium text-muted-foreground">
+                              Space Complexity
+                            </div>
+                            <div className="text-xs">
+                              {
+                                executionResult.analysis.estimatedComplexity
+                                  .spaceComplexity
+                              }
+                            </div>
                           </div>
                         </>
                       )}
@@ -361,7 +393,10 @@ export function CodeEditor({
                         {testCases
                           .filter((tc) => !tc.isHidden)
                           .map((testCase, index) => (
-                            <div key={testCase.id} className="border border-border rounded-lg p-3">
+                            <div
+                              key={testCase.id}
+                              className="border border-border rounded-lg p-3"
+                            >
                               <div className="flex items-center justify-between mb-2">
                                 <span className="font-medium text-sm">
                                   Test Case {index + 1}
@@ -395,7 +430,7 @@ export function CodeEditor({
                   </>
                 )}
               </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
       )}
