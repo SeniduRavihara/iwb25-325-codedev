@@ -1,30 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Code, Trophy } from "lucide-react";
+import { Code, Trophy, BarChart3, Timer, Home } from "lucide-react";
 
 const navigation = [
-  { name: "Home", href: "/", icon: Code },
+  { name: "Home", href: "/", icon: Home },
+  { name: "Challenges", href: "/challenges", icon: Code },
   { name: "Contests", href: "/contests", icon: Trophy },
+  { name: "Leaderboard", href: "/leaderboard", icon: BarChart3 },
+  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { name: "Timer", href: "/timer", icon: Timer },
 ];
-
-// Replace with your real auth logic
-const isAuthenticated = false;
 
 export function Navigation() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleNavigation = (href: string) => {
-    if (href === "/contests" && !isAuthenticated) {
-      router.push("/login"); // Redirect to login if not authenticated
-    } else {
-      router.push(href);
-    }
-  };
 
   return (
     <nav className="bg-card border-b border-border">
@@ -33,16 +25,18 @@ export function Navigation() {
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-2">
               <Code className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">CodeArena</span>
+              <span className="text-xl font-bold text-foreground">
+                CodeArena
+              </span>
             </Link>
 
             <div className="hidden md:flex space-x-4">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <button
+                  <Link
                     key={item.name}
-                    onClick={() => handleNavigation(item.href)}
+                    href={item.href}
                     className={cn(
                       "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       pathname === item.href
@@ -52,7 +46,7 @@ export function Navigation() {
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
