@@ -42,12 +42,12 @@ export default function ContestsPage() {
               Participate in coding contests and compete with developers worldwide
             </p>
           </div>
-          <Button asChild>
+          {/* <Button asChild>
             <Link href="/contests/create">
               <Plus className="h-4 w-4 mr-2" />
               Create Contest
             </Link>
-          </Button>
+          </Button> */}
         </div>
 
         {/* Filters */}
@@ -100,9 +100,9 @@ export default function ContestsPage() {
                     <CardDescription className="mb-3">{contest.description}</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
+                    {/* <Button variant="outline" size="sm" asChild>
                       <Link href={`/contests/${contest.id}/edit`}>Edit</Link>
-                    </Button>
+                    </Button> */}
                     {contest.status === "upcoming" && <Button size="sm">Register</Button>}
                     {contest.status === "active" && (
                       <Button size="sm" asChild>

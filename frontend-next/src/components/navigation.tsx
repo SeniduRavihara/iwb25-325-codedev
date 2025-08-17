@@ -11,7 +11,7 @@ const navigation = [
   { name: "Challenges", href: "/challenges", icon: Code },
   { name: "Contests", href: "/contests", icon: Trophy },
   { name: "Leaderboard", href: "/leaderboard", icon: BarChart3 },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Timer", href: "/timer", icon: Timer },
 ]
 
