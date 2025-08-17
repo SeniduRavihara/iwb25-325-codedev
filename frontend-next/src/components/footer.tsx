@@ -161,7 +161,7 @@ export function Footer() {
 
         <div className="border-t border-border mt-8 pt-8 text-center">
           <p className="text-muted-foreground">
-            © 2024 HackathonPlus. All rights reserved. Built with passion for
+            © 2025 HackathonPlus. All rights reserved. Built with passion for
             developers.
           </p>
         </div>
