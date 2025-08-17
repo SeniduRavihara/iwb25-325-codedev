@@ -147,7 +147,7 @@ The backend will start on `http://localhost:8080`
 2. **Install dependencies:**
 
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
 
 3. **Start the development server:**
