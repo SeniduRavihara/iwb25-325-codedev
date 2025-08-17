@@ -208,29 +208,10 @@ export function CodeEditor({
     input: string,
     lang: string
   ): string => {
-    switch (lang) {
-      case "python":
-        return `${userCode}
-
-# Test input
-test_input = """${input}"""
-print(test_input)`;
-
-      case "java":
-        return `${userCode}
-
-// Test input
-System.out.println("${input.replace(/"/g, '\\"')}");`;
-
-      case "ballerina":
-        return `${userCode}
-
-// Test input
-io:println("${input.replace(/"/g, '\\"')}");`;
-
-      default:
-        return userCode;
-    }
+    // For now, let's just return the user code as-is
+    // The user should write code that handles the specific test case
+    // This avoids adding extra output that interferes with the result
+    return userCode;
   };
 
   const submitCode = () => {
