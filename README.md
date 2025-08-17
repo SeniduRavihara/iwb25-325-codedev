@@ -1,14 +1,18 @@
-# CodeArena - Coding Platform
+# CodeArena - Advanced Coding Platform
 
-A modern coding platform built with Next.js frontend and Ballerina backend, featuring authentication, role-based access control, and contest management.
+A modern competitive programming platform built with Next.js frontend and Ballerina backend, featuring real-time code execution, test case validation, and comprehensive contest management.
 
-## Features
+## 🚀 Features
 
 ### Frontend (Next.js)
 
 - **Modern UI**: Built with Tailwind CSS and shadcn/ui components
 - **Authentication**: Login/signup with JWT token storage
 - **Role-based Access Control**: Admin and user roles with different permissions
+- **Code Editor**: Monaco Editor with syntax highlighting for Python, Java, and Ballerina
+- **Real-time Code Execution**: Execute code against test cases with instant feedback
+- **Test Case Validation**: Automatic comparison of expected vs actual outputs
+- **Performance Analysis**: Time complexity, space complexity, and execution metrics
 - **Global State Management**: React Context for auth and data management
 - **Responsive Design**: Mobile-friendly interface
 
@@ -19,8 +23,19 @@ A modern coding platform built with Next.js frontend and Ballerina backend, feat
 - **SQLite Database**: Lightweight database with migrations and seeding
 - **Role-based Access Control**: Admin and user role management
 - **Password Hashing**: Secure password storage using SHA-256
+- **Code Execution Engine**: Docker-based secure code execution
+- **Multi-language Support**: Python, Java, and Ballerina execution
+- **Performance Monitoring**: Execution time, memory usage, and complexity analysis
 
-## Project Structure
+### Code Execution Engine
+
+- **Secure Containerization**: Docker-based isolated execution environment
+- **Multi-language Support**: Python 3, Java 17, Ballerina 2201.12.7
+- **Resource Limits**: Memory (256MB), CPU (1.0 cores), Process (50)
+- **Network Isolation**: No external network access for security
+- **Real-time Feedback**: Instant execution results and error reporting
+
+## 🏗️ Project Structure
 
 ```
 HACKATHON_PLUS_BALLERINA/
@@ -36,22 +51,40 @@ HACKATHON_PLUS_BALLERINA/
 ├── frontend-next/             # Next.js frontend
 │   ├── src/
 │   │   ├── app/               # App router pages
+│   │   │   ├── (auth)/        # Authentication pages
+│   │   │   ├── (private)/     # Protected pages
+│   │   │   │   ├── challenges/ # Challenge management
+│   │   │   │   ├── contests/  # Contest management
+│   │   │   │   └── leaderboard/ # Leaderboards
+│   │   │   └── admin/         # Admin dashboard
 │   │   ├── components/        # Reusable UI components
 │   │   ├── contexts/          # React Context providers
 │   │   └── lib/               # Utility functions and API
 │   └── package.json
+├── code-execution-engine-docker/ # Docker code execution engine
+│   ├── Dockerfile             # Multi-language container
+│   ├── run-code.sh            # Execution script
+│   └── README.md              # Engine documentation
 └── docker-compose.yml         # Docker configuration
 ```
 
-## Setup Instructions
+## 🛠️ Setup Instructions
 
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Ballerina 2201.8.0+
-- Docker (optional)
+- Ballerina 2201.12.7+
+- Docker (required for code execution)
+- Git
 
-### Backend Setup
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd HACKATHON_PLUS_BALLERINA
+```
+
+### 2. Backend Setup
 
 1. **Navigate to backend directory:**
 
@@ -84,7 +117,26 @@ HACKATHON_PLUS_BALLERINA/
 
 The backend will start on `http://localhost:8080`
 
-### Frontend Setup
+### 3. Code Execution Engine Setup
+
+1. **Navigate to code execution directory:**
+
+   ```bash
+   cd code-execution-engine-docker
+   ```
+
+2. **Build the Docker image:**
+
+   ```bash
+   docker build -t multi-lang-runner:latest .
+   ```
+
+3. **Verify the build:**
+   ```bash
+   docker images | grep multi-lang-runner
+   ```
+
+### 4. Frontend Setup
 
 1. **Navigate to frontend directory:**
 
@@ -105,7 +157,62 @@ The backend will start on `http://localhost:8080`
 
 The frontend will start on `http://localhost:3000`
 
-## API Endpoints
+## 🧪 Testing the Code Execution
+
+### Sample Test Cases
+
+#### Python Example
+
+```python
+class TreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def inorderTraversal(root):
+    result = []
+    def inorder(node):
+        if node:
+            inorder(node.left)
+            result.append(node.val)
+            inorder(node.right)
+    inorder(root)
+    return result
+
+# Test case
+root = TreeNode(1, None, TreeNode(2, TreeNode(3)))
+result = inorderTraversal(root)
+print(result)
+```
+
+#### Java Example
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+        for (int i = 0; i < 5; i++) {
+            System.out.println("Count: " + i);
+        }
+    }
+}
+```
+
+#### Ballerina Example
+
+```ballerina
+import ballerina/io;
+
+public function main() {
+    io:println("Hello from Ballerina!");
+    foreach int i in 0..<5 {
+        io:println(string`Count: ${i}`);
+    }
+}
+```
+
+## 📡 API Endpoints
 
 ### Authentication
 
@@ -113,11 +220,17 @@ The frontend will start on `http://localhost:3000`
 - `POST /register` - User registration
 - `GET /profile` - Get user profile (requires JWT)
 
+### Code Execution
+
+- `POST /api/submit` - Execute code
+- `GET /api/health` - Code execution service health
+- `GET /api/languages` - Get supported languages
+
 ### Health Check
 
 - `GET /health` - Server health check
 
-## Database Commands
+## 🗄️ Database Commands
 
 ### Backend Commands
 
@@ -135,7 +248,7 @@ bal run -- seed
 bal run -- db:fresh
 ```
 
-## Demo Credentials
+## 👥 Demo Credentials
 
 ### Admin User
 
@@ -153,38 +266,106 @@ bal run -- db:fresh
 - Password: `password`
 - Email: `jane@example.com`
 
-## Features Implemented
+## ✅ Features Implemented
 
-### ✅ Completed
+### Authentication & Authorization
 
 - [x] User authentication (login/register)
 - [x] JWT token management with 7-day expiration
 - [x] Role-based access control (admin/user)
 - [x] Global authentication context
 - [x] Local storage for JWT tokens
+
+### Database & Backend
+
 - [x] Database migrations and seeding
-- [x] Responsive login/signup pages
-- [x] API service layer
+- [x] SQLite database with proper schema
+- [x] RESTful API endpoints
 - [x] Error handling and validation
-- [x] Modern UI with proper borders and styling
 
-### 🔄 In Progress
+### Frontend & UI
 
-- [ ] Contest management
-- [ ] Challenge creation and management
-- [ ] User profile management
-- [ ] Admin dashboard
-- [ ] Real-time features
+- [x] Responsive login/signup pages
+- [x] Modern UI with Tailwind CSS and shadcn/ui
+- [x] API service layer
+- [x] Protected routes and navigation
 
-### 📋 Planned
+### Code Execution Engine
 
-- [ ] Code execution engine integration
-- [ ] Leaderboards
-- [ ] Social features
-- [ ] Advanced analytics
+- [x] Multi-language Docker container (Python, Java, Ballerina)
+- [x] Secure code execution with resource limits
+- [x] Real-time code execution API
+- [x] Performance monitoring and analysis
+- [x] Test case validation and comparison
+- [x] Code complexity analysis
+
+### Contest Management
+
+- [x] Contest creation and management
+- [x] Challenge management with test cases
+- [x] Real-time code execution in contests
+- [x] Test case validation and scoring
+- [x] Leaderboard functionality
+
+### Admin Features
+
+- [x] Admin dashboard
+- [x] User management
+- [x] Contest and challenge management
+- [x] Analytics and monitoring
+
+## 🔄 In Progress
+
+- [ ] Real-time collaboration features
+- [ ] Advanced analytics and reporting
 - [ ] Email notifications
+- [ ] Social features and user profiles
+- [ ] Advanced contest features (teams, time limits)
 
-## Technology Stack
+## 📋 Planned Features
+
+- [ ] Code plagiarism detection
+- [ ] Advanced code analysis tools
+- [ ] Integration with external APIs
+- [ ] Mobile app development
+- [ ] Advanced security features
+
+## 🛡️ Security Features
+
+### Code Execution Security
+
+- **Container Isolation**: Each execution runs in isolated Docker containers
+- **Resource Limits**: Memory (256MB), CPU (1.0 cores), Process (50)
+- **Network Isolation**: No external network access
+- **Time Limits**: 30-second execution timeout
+- **Read-only Filesystem**: Prevents file system attacks
+- **Non-root User**: Code runs as unprivileged user
+
+### Application Security
+
+- **JWT Authentication**: Secure token-based authentication
+- **Password Hashing**: SHA-256 password hashing
+- **CORS Protection**: Configured CORS policies
+- **Input Validation**: Comprehensive input validation
+- **SQL Injection Protection**: Parameterized queries
+
+## 🚀 Performance Features
+
+### Code Analysis
+
+- **Time Complexity**: Automatic detection of algorithm complexity
+- **Space Complexity**: Memory usage analysis
+- **Pattern Detection**: Identifies common coding patterns
+- **Performance Metrics**: Execution time and resource usage
+
+### System Performance
+
+- **Docker Optimization**: Efficient container management
+- **Database Optimization**: Indexed queries and efficient schema
+- **Frontend Optimization**: Code splitting and lazy loading
+- **Caching**: Strategic caching for better performance
+
+## 🛠️ Technology Stack
 
 ### Frontend
 
@@ -193,43 +374,116 @@ bal run -- db:fresh
 - **UI Components**: shadcn/ui
 - **State Management**: React Context
 - **Icons**: Lucide React
+- **Code Editor**: Monaco Editor
 - **TypeScript**: Full type safety
 
 ### Backend
 
-- **Language**: Ballerina
+- **Language**: Ballerina 2201.12.7
 - **Database**: SQLite
 - **Authentication**: JWT
 - **Password Hashing**: SHA-256
 - **API**: RESTful HTTP
+- **Code Execution**: Docker containers
 
-## Development
+### Infrastructure
 
-### Adding New Features
+- **Containerization**: Docker
+- **Code Execution**: Multi-language Docker containers
+- **Security**: Container isolation and resource limits
+- **Monitoring**: Performance metrics and analysis
 
-1. Create database migration if needed
-2. Update models in `backend-ballerina/modules/models/`
-3. Add API endpoints in `main.bal`
-4. Update frontend API service in `frontend-next/src/lib/api.ts`
-5. Create UI components in `frontend-next/src/components/`
-6. Update contexts if needed
+## 🧪 Testing
 
-### Code Style
+### Manual Testing
 
-- Use TypeScript for frontend
-- Follow Ballerina coding conventions
-- Use meaningful variable and function names
-- Add comments for complex logic
-- Keep components small and focused
+1. Start both backend and frontend servers
+2. Navigate to `http://localhost:3000`
+3. Login with demo credentials
+4. Create or join a contest
+5. Write and execute code
+6. Verify test case results
 
-## Contributing
+### Code Execution Testing
+
+```bash
+# Test Python execution
+curl -X POST http://localhost:8080/api/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "print(\"Hello, World!\")", "language": "python"}'
+
+# Test Java execution
+curl -X POST http://localhost:8080/api/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "public class Main { public static void main(String[] args) { System.out.println(\"Hello, World!\"); } }", "language": "java"}'
+
+# Test Ballerina execution
+curl -X POST http://localhost:8080/api/submit \
+  -H "Content-Type: application/json" \
+  -d '{"code": "import ballerina/io; public function main() { io:println(\"Hello, World!\"); }", "language": "ballerina"}'
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Docker not running**: Ensure Docker is installed and running
+2. **Port conflicts**: Check if ports 3000 and 8080 are available
+3. **Database errors**: Run `bal run -- db:fresh` to reset database
+4. **Code execution fails**: Verify Docker image is built correctly
+
+### Debug Commands
+
+```bash
+# Check Docker status
+docker ps
+
+# Check backend logs
+cd backend-ballerina && bal run
+
+# Check frontend logs
+cd frontend-next && npm run dev
+
+# Test code execution health
+curl http://localhost:8080/api/health
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+### Development Guidelines
 
-This project is licensed under the MIT License.
+- Use TypeScript for frontend development
+- Follow Ballerina coding conventions
+- Write comprehensive tests
+- Update documentation for new features
+- Ensure security best practices
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) for the frontend framework
+- [Ballerina](https://ballerina.io/) for the backend language
+- [shadcn/ui](https://ui.shadcn.com/) for UI components
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) for code editing
+- [Docker](https://www.docker.com/) for containerization
+
+## 📞 Support
+
+For support and questions:
+
+- Create an issue in the repository
+- Contact the development team
+- Check the documentation in each component's README
+
+---
+
+**Built with ❤️ for competitive programming enthusiasts**
