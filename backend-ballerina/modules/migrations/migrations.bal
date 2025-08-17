@@ -214,5 +214,10 @@ public MigrationInfo[] MIGRATIONS = [
         version: 4,
         name: "004_create_settings_table",
         execute: createSettingsTable
+    },
+    {
+        version: 5,
+        name: "005_create_logs_table",
+        execute: createLogsTable
     }
 ];
