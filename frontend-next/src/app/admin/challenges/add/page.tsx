@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Navigation } from "@/components/navigation"
+// import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -77,7 +77,7 @@ export default function AddChallengePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
+      {/* <Navigation /> */}
 
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
@@ -86,7 +86,7 @@ export default function AddChallengePage() {
             <p className="text-muted-foreground mt-2">Create a new coding challenge for the platform</p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/challenges">Cancel</Link>
+            <Link href="/admin/challenges">Cancel</Link>
           </Button>
         </div>
 
@@ -257,7 +257,7 @@ export default function AddChallengePage() {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href="/challenges">Cancel</Link>
+              <Link href="/admin/challenges">Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />
