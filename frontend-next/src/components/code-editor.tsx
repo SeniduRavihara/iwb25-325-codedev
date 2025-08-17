@@ -30,6 +30,15 @@ interface CodeEditorProps {
   initialLanguage?: string;
 }
 
+interface TestResult {
+  testCase: TestCase;
+  index: number;
+  actualOutput: string;
+  status: "passed" | "failed" | "error";
+  executionTime: number;
+  error?: string;
+}
+
 const languageTemplates = {
   java: `public class Main {
     public static void main(String[] args) {
@@ -67,6 +76,7 @@ export function CodeEditor({
   const [isRunning, setIsRunning] = useState(false);
   const [executionResult, setExecutionResult] =
     useState<CodeExecutionResponse | null>(null);
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
@@ -100,6 +110,7 @@ export function CodeEditor({
     setLanguage(newLanguage);
     setCode(languageTemplates[newLanguage as keyof typeof languageTemplates]);
     setExecutionResult(null);
+    setTestResults([]);
     setShowResults(false);
     setError(null);
   };
@@ -114,8 +125,10 @@ export function CodeEditor({
     setShowResults(true);
     setError(null);
     setExecutionResult(null);
+    setTestResults([]);
 
     try {
+      // First, run the code to see if it compiles/executes
       const response = await apiService.executeCode({
         code: code.trim(),
         language: language,
@@ -123,6 +136,9 @@ export function CodeEditor({
 
       if (response.success && response.data) {
         setExecutionResult(response.data);
+
+        // Now run against test cases
+        await runTestCases();
       } else {
         setError(response.message || "Failed to execute code");
       }
@@ -134,6 +150,89 @@ export function CodeEditor({
     }
   };
 
+  const runTestCases = async () => {
+    const visibleTestCases = testCases.filter((tc) => !tc.isHidden);
+    const results: TestResult[] = [];
+
+    for (let i = 0; i < visibleTestCases.length; i++) {
+      const testCase = visibleTestCases[i];
+
+      try {
+        // Create test code that includes the input
+        const testCode = createTestCode(code, testCase.input, language);
+
+        const response = await apiService.executeCode({
+          code: testCode,
+          language: language,
+        });
+
+        if (response.success && response.data) {
+          const actualOutput = response.data.output?.trim() || "";
+          const expectedOutput = testCase.expectedOutput.trim();
+          const status = actualOutput === expectedOutput ? "passed" : "failed";
+
+          results.push({
+            testCase,
+            index: i + 1,
+            actualOutput,
+            status,
+            executionTime: response.data.executionTime?.milliseconds || 0,
+          });
+        } else {
+          results.push({
+            testCase,
+            index: i + 1,
+            actualOutput: "",
+            status: "error",
+            executionTime: 0,
+            error: response.message || "Execution failed",
+          });
+        }
+      } catch (err) {
+        results.push({
+          testCase,
+          index: i + 1,
+          actualOutput: "",
+          status: "error",
+          executionTime: 0,
+          error: "Network error",
+        });
+      }
+    }
+
+    setTestResults(results);
+  };
+
+  const createTestCode = (
+    userCode: string,
+    input: string,
+    lang: string
+  ): string => {
+    switch (lang) {
+      case "python":
+        return `${userCode}
+
+# Test input
+test_input = """${input}"""
+print(test_input)`;
+
+      case "java":
+        return `${userCode}
+
+// Test input
+System.out.println("${input.replace(/"/g, '\\"')}");`;
+
+      case "ballerina":
+        return `${userCode}
+
+// Test input
+io:println("${input.replace(/"/g, '\\"')}");`;
+
+      default:
+        return userCode;
+    }
+  };
+
   const submitCode = () => {
     onSubmit(code, language);
   };
@@ -141,6 +240,7 @@ export function CodeEditor({
   const resetCode = () => {
     setCode(languageTemplates[language as keyof typeof languageTemplates]);
     setExecutionResult(null);
+    setTestResults([]);
     setShowResults(false);
     setError(null);
   };
@@ -174,6 +274,9 @@ export function CodeEditor({
     };
     input.click();
   };
+
+  const passedTests = testResults.filter((r) => r.status === "passed").length;
+  const totalTests = testResults.length;
 
   return (
     <div className="space-y-6">
@@ -210,7 +313,7 @@ export function CodeEditor({
         <div className="flex gap-2">
           <Button variant="outline" onClick={runCode} disabled={isRunning}>
             <Play className="h-4 w-4 mr-2" />
-            {isRunning ? "Running..." : "Run Code"}
+            {isRunning ? "Running..." : "Run Tests"}
           </Button>
           <Button onClick={submitCode}>Submit Solution</Button>
         </div>
@@ -240,12 +343,12 @@ export function CodeEditor({
         </CardContent>
       </Card>
 
-      {/* Code Execution Results */}
+      {/* Test Results */}
       {showResults && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Code Execution Results
+              Test Results
               {isRunning && (
                 <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               )}
@@ -255,7 +358,7 @@ export function CodeEditor({
             {isRunning ? (
               <div className="text-center py-8">
                 <div className="text-muted-foreground">
-                  Executing your code...
+                  Running your code against test cases...
                 </div>
               </div>
             ) : error ? (
@@ -263,172 +366,181 @@ export function CodeEditor({
                 <AlertCircle className="h-4 w-4" />
                 <span>{error}</span>
               </div>
-            ) : executionResult ? (
+            ) : testResults.length > 0 ? (
               <div className="space-y-4">
-                {/* Execution Status */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        executionResult.success ? "default" : "destructive"
-                      }
-                    >
-                      {executionResult.success ? "SUCCESS" : "ERROR"}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      Language: {executionResult.language}
+                {/* Test Summary */}
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    {passedTests} of {totalTests} test cases passed
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-green-400">{passedTests} Passed</span>
+                    {" • "}
+                    <span className="text-red-400">
+                      {totalTests - passedTests} Failed
                     </span>
                   </div>
-                  {executionResult.executionTime && (
-                    <div className="text-sm text-muted-foreground">
-                      {executionResult.executionTime.milliseconds.toFixed(2)}ms
-                    </div>
-                  )}
                 </div>
 
-                {/* Output */}
-                <div>
-                  <div className="font-medium text-muted-foreground mb-2">
-                    Output:
-                  </div>
-                  <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-                    {executionResult.success
-                      ? executionResult.output || "No output"
-                      : executionResult.error || "Execution failed"}
-                  </pre>
-                </div>
-
-                {/* Performance Info */}
-                {executionResult.performance && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium text-muted-foreground">
-                        Memory Limit
-                      </div>
-                      <div>{executionResult.performance.memoryLimit}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-muted-foreground">
-                        CPU Limit
-                      </div>
-                      <div>{executionResult.performance.cpuLimit}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-muted-foreground">
-                        Process Limit
-                      </div>
-                      <div>{executionResult.performance.processLimit}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-muted-foreground">
-                        Network
-                      </div>
-                      <div>
-                        {executionResult.performance.networkAccess
-                          ? "Enabled"
-                          : "Disabled"}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Code Analysis */}
-                {executionResult.analysis && (
-                  <div>
-                    <div className="font-medium text-muted-foreground mb-2">
-                      Code Analysis:
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <div className="font-medium text-muted-foreground">
-                          Lines of Code
-                        </div>
-                        <div>{executionResult.analysis.linesOfCode}</div>
-                      </div>
-                      <div>
-                        <div className="font-medium text-muted-foreground">
-                          Code Length
-                        </div>
-                        <div>{executionResult.analysis.codeLength} chars</div>
-                      </div>
-                      {executionResult.analysis.estimatedComplexity && (
-                        <>
-                          <div>
-                            <div className="font-medium text-muted-foreground">
-                              Time Complexity
-                            </div>
-                            <div className="text-xs">
-                              {
-                                executionResult.analysis.estimatedComplexity
-                                  .timeComplexity
-                              }
-                            </div>
-                          </div>
-                          <div>
-                            <div className="font-medium text-muted-foreground">
-                              Space Complexity
-                            </div>
-                            <div className="text-xs">
-                              {
-                                executionResult.analysis.estimatedComplexity
-                                  .spaceComplexity
-                              }
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Test Cases Comparison */}
-                {testCases.length > 0 && (
+                {/* Code Analysis (if available) */}
+                {executionResult?.analysis && (
                   <>
                     <Separator />
                     <div>
                       <div className="font-medium text-muted-foreground mb-2">
-                        Test Cases (Manual Verification):
+                        Code Analysis:
                       </div>
-                      <div className="space-y-3">
-                        {testCases
-                          .filter((tc) => !tc.isHidden)
-                          .map((testCase, index) => (
-                            <div
-                              key={testCase.id}
-                              className="border border-border rounded-lg p-3"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-sm">
-                                  Test Case {index + 1}
-                                </span>
-                                <Badge variant="secondary" className="text-xs">
-                                  Manual Check
-                                </Badge>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            Lines of Code
+                          </div>
+                          <div>{executionResult.analysis.linesOfCode}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            Code Length
+                          </div>
+                          <div>{executionResult.analysis.codeLength} chars</div>
+                        </div>
+                        {executionResult.analysis.estimatedComplexity && (
+                          <>
+                            <div>
+                              <div className="font-medium text-muted-foreground">
+                                Time Complexity
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                <div>
-                                  <div className="font-medium text-muted-foreground mb-1">
-                                    Input:
-                                  </div>
-                                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
-                                    {testCase.input}
-                                  </pre>
-                                </div>
-                                <div>
-                                  <div className="font-medium text-muted-foreground mb-1">
-                                    Expected Output:
-                                  </div>
-                                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
-                                    {testCase.expectedOutput}
-                                  </pre>
-                                </div>
+                              <div className="text-xs">
+                                {
+                                  executionResult.analysis.estimatedComplexity
+                                    .timeComplexity
+                                }
                               </div>
                             </div>
-                          ))}
+                            <div>
+                              <div className="font-medium text-muted-foreground">
+                                Space Complexity
+                              </div>
+                              <div className="text-xs">
+                                {
+                                  executionResult.analysis.estimatedComplexity
+                                    .spaceComplexity
+                                }
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </>
                 )}
+
+                {/* Performance Info (if available) */}
+                {executionResult?.performance && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="font-medium text-muted-foreground mb-2">
+                        Performance Metrics:
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            Memory Limit
+                          </div>
+                          <div>{executionResult.performance.memoryLimit}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            CPU Limit
+                          </div>
+                          <div>{executionResult.performance.cpuLimit}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            Process Limit
+                          </div>
+                          <div>{executionResult.performance.processLimit}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground">
+                            Network
+                          </div>
+                          <div>
+                            {executionResult.performance.networkAccess
+                              ? "Enabled"
+                              : "Disabled"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Individual Test Results */}
+                <Separator />
+                <div className="space-y-3">
+                  {testResults.map((result) => (
+                    <div
+                      key={result.testCase.id}
+                      className="border border-border rounded-lg p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            Test Case {result.index}
+                          </span>
+                          <Badge
+                            variant={
+                              result.status === "passed"
+                                ? "default"
+                                : "destructive"
+                            }
+                          >
+                            {result.status.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {result.executionTime.toFixed(2)}ms
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium text-muted-foreground mb-1">
+                            Input:
+                          </div>
+                          <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
+                            {result.testCase.input}
+                          </pre>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground mb-1">
+                            Expected:
+                          </div>
+                          <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
+                            {result.testCase.expectedOutput}
+                          </pre>
+                        </div>
+                        <div>
+                          <div className="font-medium text-muted-foreground mb-1">
+                            Your Output:
+                          </div>
+                          <pre
+                            className={`p-2 rounded text-xs overflow-x-auto ${
+                              result.status === "passed"
+                                ? "bg-green-900/20"
+                                : "bg-red-900/20"
+                            }`}
+                          >
+                            {result.status === "error"
+                              ? result.error || "Execution failed"
+                              : result.actualOutput}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </CardContent>
