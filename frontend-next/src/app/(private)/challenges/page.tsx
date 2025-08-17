@@ -141,7 +141,11 @@ export default function ChallengesPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {/* Edit button removed - this page should only be accessible to admins */}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/challenges/${challenge.id}/edit`}>
+                        Edit
+                      </Link>
+                    </Button>
                   </div>
                 </div>
               </CardHeader>

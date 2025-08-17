@@ -11,52 +11,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/contexts/AuthContext";
 import { mockChallenges, mockContests } from "@/lib/mock-data";
 import { Clock, Save, X } from "lucide-react";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { useState } from "react";
 
 interface EditContestPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function EditContestPage({ params }: EditContestPageProps) {
-  const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
-  const { id } = use(params);
-  const contest = mockContests.find((c) => c.id === id);
-
-  // Redirect to login if not authenticated, or to home if not admin
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    } else if (user?.role !== "admin") {
-      router.push("/");
-    }
-  }, [isAuthenticated, user?.role, router]);
+  const contest = mockContests.find((c) => c.id === params.id);
 
   if (!contest) {
     notFound();
-  }
-
-  // Show loading if not authenticated or not admin
-  if (!isAuthenticated || user?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">
-            {!isAuthenticated
-              ? "Redirecting to login..."
-              : "Access denied. Redirecting..."}
-          </p>
-        </div>
-      </div>
-    );
   }
 
   const [formData, setFormData] = useState({
@@ -129,7 +100,7 @@ export default function EditContestPage({ params }: EditContestPageProps) {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href={`/admin/contests/${id}`}>Cancel</Link>
+            <Link href={`/contests/${params.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -361,7 +332,7 @@ export default function EditContestPage({ params }: EditContestPageProps) {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href={`/admin/contests/${id}`}>Cancel</Link>
+              <Link href={`/contests/${params.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />

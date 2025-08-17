@@ -1,67 +1,36 @@
-"use client";
-
 import { Navigation } from "@/components/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import { Separator } from "@/components/ui/separator";
 import {
   mockChallenges,
   mockContestParticipants,
   mockContests,
 } from "@/lib/mock-data";
-import {
-  Award,
-  Calendar,
-  Clock,
-  Edit,
-  Play,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Award, Calendar, Clock, Play, Trophy, Users } from "lucide-react";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { use, useEffect } from "react";
+import { notFound } from "next/navigation";
 
 interface ContestPageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function ContestPage({ params }: ContestPageProps) {
-  const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
-  const { id } = use(params);
-  const contest = mockContests.find((c) => c.id === id);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+  const contest = mockContests.find((c) => c.id === params.id);
 
   if (!contest) {
     notFound();
   }
 
-  // Show loading if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
-        </div>
-      </div>
-    );
-  }
-
   const contestChallenges = mockChallenges.filter((c) =>
     contest.challenges.includes(c.id)
   );
-  const leaderboard = mockContestParticipants.filter((p) => p.contestId === id);
+  const leaderboard = mockContestParticipants.filter(
+    (p) => p.contestId === params.id
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -106,15 +75,6 @@ export default function ContestPage({ params }: ContestPageProps) {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    {/* Only show Edit button for admin users */}
-                    {user?.role === "admin" && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/admin/contests/${contest.id}/edit`}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Link>
-                      </Button>
-                    )}
                     {contest.status === "upcoming" && <Button>Register</Button>}
                     {contest.status === "active" && (
                       <Button asChild>
@@ -155,123 +115,173 @@ export default function ContestPage({ params }: ContestPageProps) {
                     </div>
                   </div>
                   <div className="text-center">
-                    <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                    <div className="text-sm font-medium">Challenges</div>
+                    <Trophy className="h-8 w-8 mx-auto mb-2 text-chart-3" />
+                    <div className="text-sm font-medium">Problems</div>
                     <div className="text-xs text-muted-foreground">
-                      {contestChallenges.length} problems
+                      {contestChallenges.length} challenges
                     </div>
                   </div>
                 </div>
 
-                {/* Prizes */}
                 {contest.prizes.length > 0 && (
-                  <div className="border-t border-border pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Prizes</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {contest.prizes.map((prize, index) => (
-                        <div
-                          key={index}
-                          className="text-center p-4 border border-border rounded-lg"
-                        >
-                          <Award className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-                          <div className="font-medium">{prize}</div>
-                        </div>
-                      ))}
+                  <>
+                    <Separator className="my-4" />
+                    <div>
+                      <h3 className="font-medium mb-3 flex items-center gap-2">
+                        <Award className="h-4 w-4" />
+                        Prizes
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {contest.prizes.map((prize, index) => (
+                          <Badge key={index} variant="outline">
+                            {prize}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Challenges */}
+            {/* Contest Challenges */}
             <Card>
               <CardHeader>
-                <CardTitle>Contest Challenges</CardTitle>
+                <CardTitle>Contest Problems</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contestChallenges.map((challenge, index) => (
-                    <div
-                      key={challenge.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-                          {String.fromCharCode(65 + index)}
-                        </div>
-                        <div>
-                          <div className="font-medium">{challenge.title}</div>
-                          <div className="text-sm text-muted-foreground">
+              <CardContent className="space-y-4">
+                {contestChallenges.map((challenge, index) => (
+                  <div
+                    key={challenge.id}
+                    className="flex items-center justify-between p-4 border border-border rounded-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+                        {String.fromCharCode(65 + index)}
+                      </div>
+                      <div>
+                        <div className="font-medium">{challenge.title}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge
+                            variant={
+                              challenge.difficulty === "Easy"
+                                ? "secondary"
+                                : challenge.difficulty === "Medium"
+                                ? "default"
+                                : "destructive"
+                            }
+                            className="text-xs"
+                          >
                             {challenge.difficulty}
-                          </div>
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {challenge.timeLimit}min • {challenge.successRate}%
+                            success
+                          </span>
                         </div>
                       </div>
-                      <Badge variant="outline">{challenge.timeLimit}min</Badge>
                     </div>
-                  ))}
-                </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/challenges/${challenge.id}`}>
+                        View Problem
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Rules */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contest Rules</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: contest.rules }}
+                />
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Quick Actions */}
+            {/* Contest Info */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>Contest Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button className="w-full" asChild>
-                  <Link href={`/contests/${id}/leaderboard`}>
-                    <Trophy className="h-4 w-4 mr-2" />
-                    View Leaderboard
-                  </Link>
-                </Button>
-                {contest.status === "upcoming" && (
-                  <Button variant="outline" className="w-full" asChild>
-                    <Link href={`/contests/${id}/timer`}>
-                      <Clock className="h-4 w-4 mr-2" />
-                      Countdown Timer
-                    </Link>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Top Participants */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Participants</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {leaderboard.slice(0, 5).map((participant, index) => (
-                    <div
-                      key={participant.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm">
-                            {participant.username}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {participant.score} points
-                          </div>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {participant.submissions} submissions
-                      </Badge>
-                    </div>
-                  ))}
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created by:</span>
+                  <span>{contest.createdBy}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Registration ends:
+                  </span>
+                  <span>{formatDateTime(contest.registrationDeadline)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">End time:</span>
+                  <span>{formatDateTime(contest.endTime)}</span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Leaderboard */}
+            {leaderboard.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Leaderboard</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {leaderboard.slice(0, 5).map((participant) => (
+                      <div
+                        key={participant.id}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                              participant.rank === 1
+                                ? "bg-chart-3 text-black"
+                                : participant.rank === 2
+                                ? "bg-muted text-foreground"
+                                : participant.rank === 3
+                                ? "bg-chart-5 text-white"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {participant.rank}
+                          </div>
+                          <span className="text-sm font-medium">
+                            {participant.username}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium">
+                          {participant.score}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {leaderboard.length > 5 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-4 bg-transparent"
+                      asChild
+                    >
+                      <Link href={`/contests/${contest.id}/leaderboard`}>
+                        View Full Leaderboard
+                      </Link>
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

@@ -17,52 +17,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/contexts/AuthContext";
 import { mockChallenges, type TestCase } from "@/lib/mock-data";
 import { Plus, Save, X } from "lucide-react";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { useState } from "react";
 
 interface EditChallengePageProps {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function EditChallengePage({ params }: EditChallengePageProps) {
-  const { isAuthenticated, user } = useAuth();
-  const router = useRouter();
-  const { id } = use(params);
-  const challenge = mockChallenges.find((c) => c.id === id);
-
-  // Redirect to login if not authenticated, or to home if not admin
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    } else if (user?.role !== "admin") {
-      router.push("/");
-    }
-  }, [isAuthenticated, user?.role, router]);
+  const challenge = mockChallenges.find((c) => c.id === params.id);
 
   if (!challenge) {
     notFound();
-  }
-
-  // Show loading if not authenticated or not admin
-  if (!isAuthenticated || user?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">
-            {!isAuthenticated
-              ? "Redirecting to login..."
-              : "Access denied. Redirecting..."}
-          </p>
-        </div>
-      </div>
-    );
   }
 
   const [formData, setFormData] = useState({
@@ -108,11 +79,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
     setTestCases([...testCases, newTestCase]);
   };
 
-  const updateTestCase = (
-    id: string,
-    field: keyof TestCase,
-    value: string | number | boolean
-  ) => {
+  const updateTestCase = (id: string, field: keyof TestCase, value: any) => {
     setTestCases(
       testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc))
     );
@@ -145,7 +112,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href={`/admin/challenges/${id}`}>Cancel</Link>
+            <Link href={`/challenges/${params.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -376,7 +343,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href={`/admin/challenges/${id}`}>Cancel</Link>
+              <Link href={`/challenges/${params.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />
