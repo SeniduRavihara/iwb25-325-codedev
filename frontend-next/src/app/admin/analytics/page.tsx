@@ -1,6 +1,6 @@
 "use client"
 
-import { Navigation } from "@/components/navigation"
+import { AdminLayout } from "@/components/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { mockAnalyticsData, mockGlobalUsers } from "@/lib/mock-data"
@@ -54,10 +54,8 @@ export default function AnalyticsPage() {
   const CHART_COLORS = ["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#EF4444"]
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
+    <AdminLayout>
+      <div className="space-y-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
           <p className="text-muted-foreground mt-2">
@@ -300,6 +298,6 @@ export default function AnalyticsPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   )
 }

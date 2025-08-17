@@ -1,4 +1,4 @@
-import { Navigation } from "@/components/navigation"
+import { AdminLayout } from "@/components/admin-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,9 @@ import Link from "next/link"
 
 export default function ChallengesPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
             <p className="text-muted-foreground mt-2">
@@ -22,7 +20,7 @@ export default function ChallengesPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/challenges/add">
+            <Link href="/admin/challenges/add">
               <Plus className="h-4 w-4 mr-2" />
               Add Challenge
             </Link>
@@ -30,7 +28,7 @@ export default function ChallengesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search challenges..." className="pl-10" />
@@ -68,7 +66,7 @@ export default function ChallengesPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-xl">
-                        <Link href={`/challenges/${challenge.id}`} className="hover:text-primary transition-colors">
+                        <Link href={`/admin/challenges/${challenge.id}`} className="hover:text-primary transition-colors">
                           {challenge.title}
                         </Link>
                       </CardTitle>
@@ -94,7 +92,7 @@ export default function ChallengesPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/challenges/${challenge.id}/edit`}>Edit</Link>
+                      <Link href={`/admin/challenges/${challenge.id}/edit`}>Edit</Link>
                     </Button>
                   </div>
                 </div>
@@ -119,6 +117,6 @@ export default function ChallengesPage() {
           ))}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   )
 }
