@@ -440,6 +440,344 @@ service / on new http:Listener(serverPort) {
             ]
         };
     }
+
+    // ===== SIMPLE API ENDPOINTS FOR FRONTEND =====
+
+    // Get all challenges (public)
+    resource function get challenges(http:Caller caller, http:Request req) returns error? {
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": [
+                {
+                    "id": 1,
+                    "title": "Two Sum",
+                    "description": "Find two numbers that add up to target",
+                    "difficulty": "Easy",
+                    "tags": ["Array", "Hash Table"],
+                    "time_limit": 30,
+                    "memory_limit": 256,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z"
+                },
+                {
+                    "id": 2,
+                    "title": "Binary Tree Traversal",
+                    "description": "Inorder traversal of binary tree",
+                    "difficulty": "Medium",
+                    "tags": ["Tree", "DFS"],
+                    "time_limit": 45,
+                    "memory_limit": 512,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T11:00:00Z",
+                    "updated_at": "2024-01-15T11:00:00Z"
+                },
+                {
+                    "id": 3,
+                    "title": "Maximum Subarray",
+                    "description": "Find maximum sum subarray",
+                    "difficulty": "Hard",
+                    "tags": ["Array", "DP"],
+                    "time_limit": 60,
+                    "memory_limit": 512,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T12:00:00Z",
+                    "updated_at": "2024-01-15T12:00:00Z"
+                }
+            ]
+        });
+        check caller->respond(response);
+    }
+
+    // Get all contests (public)
+    resource function get contests(http:Caller caller, http:Request req) returns error? {
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": [
+                {
+                    "id": 1,
+                    "title": "Weekly Challenge",
+                    "description": "Test your skills",
+                    "start_time": "2024-01-20T10:00:00Z",
+                    "end_time": "2024-01-20T13:00:00Z",
+                    "duration": 180,
+                    "status": "upcoming",
+                    "max_participants": 100,
+                    "prizes": ["Prize"],
+                    "rules": "Rules",
+                    "created_by": 1,
+                    "registration_deadline": "2024-01-20T09:00:00Z",
+                    "participants_count": 0,
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z"
+                },
+                {
+                    "id": 2,
+                    "title": "Advanced Contest",
+                    "description": "Complex problems",
+                    "start_time": "2024-01-18T14:00:00Z",
+                    "end_time": "2024-01-18T18:00:00Z",
+                    "duration": 240,
+                    "status": "upcoming",
+                    "max_participants": 50,
+                    "prizes": ["Prize"],
+                    "rules": "Rules",
+                    "created_by": 1,
+                    "registration_deadline": "2024-01-18T13:00:00Z",
+                    "participants_count": 0,
+                    "created_at": "2024-01-15T11:00:00Z",
+                    "updated_at": "2024-01-15T11:00:00Z"
+                }
+            ]
+        });
+        check caller->respond(response);
+    }
+
+    // Get test cases for a challenge (public - only visible test cases)
+    resource function get testcases(http:Caller caller, http:Request req) returns error? {
+        // Get challenge ID from query parameter
+        string|http:HeaderNotFoundError challengeIdParam = req.getHeader("X-Challenge-ID");
+        int challengeId = 1; // default
+
+        if challengeIdParam is string {
+            int|error parsedId = int:fromString(challengeIdParam);
+            if parsedId is int {
+                challengeId = parsedId;
+            }
+        }
+
+        json testCases = [];
+
+        if challengeId == 1 {
+            testCases = [
+                {
+                    "id": 1,
+                    "challenge_id": 1,
+                    "input_data": "[2,7,11,15]\n9",
+                    "expected_output": "[0,1]",
+                    "is_hidden": false,
+                    "points": 50,
+                    "created_at": "2024-01-15T10:00:00Z"
+                }
+            ];
+        } else if challengeId == 2 {
+            testCases = [
+                {
+                    "id": 2,
+                    "challenge_id": 2,
+                    "input_data": "[1,null,2,3]",
+                    "expected_output": "[1,3,2]",
+                    "is_hidden": false,
+                    "points": 50,
+                    "created_at": "2024-01-15T11:00:00Z"
+                }
+            ];
+        } else if challengeId == 3 {
+            testCases = [
+                {
+                    "id": 3,
+                    "challenge_id": 3,
+                    "input_data": "[-2,1,-3,4,-1,2,1,-5,4]",
+                    "expected_output": "6",
+                    "is_hidden": false,
+                    "points": 50,
+                    "created_at": "2024-01-15T12:00:00Z"
+                }
+            ];
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": testCases
+        });
+        check caller->respond(response);
+    }
+
+    // Admin endpoints for challenges
+    resource function get admin_challenges(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": [
+                {
+                    "id": 1,
+                    "title": "Two Sum",
+                    "description": "Find two numbers that add up to target",
+                    "difficulty": "Easy",
+                    "tags": ["Array", "Hash Table"],
+                    "time_limit": 30,
+                    "memory_limit": 256,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z"
+                },
+                {
+                    "id": 2,
+                    "title": "Binary Tree Traversal",
+                    "description": "Inorder traversal of binary tree",
+                    "difficulty": "Medium",
+                    "tags": ["Tree", "DFS"],
+                    "time_limit": 45,
+                    "memory_limit": 512,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T11:00:00Z",
+                    "updated_at": "2024-01-15T11:00:00Z"
+                },
+                {
+                    "id": 3,
+                    "title": "Maximum Subarray",
+                    "description": "Find maximum sum subarray",
+                    "difficulty": "Hard",
+                    "tags": ["Array", "DP"],
+                    "time_limit": 60,
+                    "memory_limit": 512,
+                    "author_id": 1,
+                    "submissions_count": 0,
+                    "success_rate": 0.0,
+                    "created_at": "2024-01-15T12:00:00Z",
+                    "updated_at": "2024-01-15T12:00:00Z"
+                }
+            ]
+        });
+        check caller->respond(response);
+    }
+
+    // Admin endpoints for contests
+    resource function get admin_contests(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": [
+                {
+                    "id": 1,
+                    "title": "Weekly Challenge",
+                    "description": "Test your skills",
+                    "start_time": "2024-01-20T10:00:00Z",
+                    "end_time": "2024-01-20T13:00:00Z",
+                    "duration": 180,
+                    "status": "upcoming",
+                    "max_participants": 100,
+                    "prizes": ["Prize"],
+                    "rules": "Rules",
+                    "created_by": 1,
+                    "registration_deadline": "2024-01-20T09:00:00Z",
+                    "participants_count": 0,
+                    "created_at": "2024-01-15T10:00:00Z",
+                    "updated_at": "2024-01-15T10:00:00Z"
+                },
+                {
+                    "id": 2,
+                    "title": "Advanced Contest",
+                    "description": "Complex problems",
+                    "start_time": "2024-01-18T14:00:00Z",
+                    "end_time": "2024-01-18T18:00:00Z",
+                    "duration": 240,
+                    "status": "upcoming",
+                    "max_participants": 50,
+                    "prizes": ["Prize"],
+                    "rules": "Rules",
+                    "created_by": 1,
+                    "registration_deadline": "2024-01-18T13:00:00Z",
+                    "participants_count": 0,
+                    "created_at": "2024-01-15T11:00:00Z",
+                    "updated_at": "2024-01-15T11:00:00Z"
+                }
+            ]
+        });
+        check caller->respond(response);
+    }
 }
 
 // Function to analyze code complexity

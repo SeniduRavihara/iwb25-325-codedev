@@ -1,3 +1,5 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService, type Challenge } from "@/lib/api";
 import {
   Clock,
-  Code,
   Edit,
   Eye,
   Plus,
@@ -27,68 +30,40 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-
-// Mock challenges data
-const mockChallenges = [
-  {
-    id: "1",
-    title: "Two Sum",
-    description:
-      "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
-    difficulty: "easy",
-    category: "arrays",
-    language: "python",
-    timeLimit: 1000,
-    memoryLimit: 128,
-    submissions: 1250,
-    successRate: 85,
-    tags: ["arrays", "hash-table", "two-pointers"],
-  },
-  {
-    id: "2",
-    title: "Longest Substring Without Repeating Characters",
-    description:
-      "Given a string s, find the length of the longest substring without repeating characters.",
-    difficulty: "medium",
-    category: "strings",
-    language: "javascript",
-    timeLimit: 2000,
-    memoryLimit: 256,
-    submissions: 890,
-    successRate: 72,
-    tags: ["strings", "sliding-window", "hash-table"],
-  },
-  {
-    id: "3",
-    title: "Binary Tree Inorder Traversal",
-    description:
-      "Given the root of a binary tree, return the inorder traversal of its nodes' values.",
-    difficulty: "easy",
-    category: "trees",
-    language: "java",
-    timeLimit: 1000,
-    memoryLimit: 128,
-    submissions: 567,
-    successRate: 91,
-    tags: ["trees", "recursion", "stack"],
-  },
-  {
-    id: "4",
-    title: "Merge k Sorted Lists",
-    description:
-      "You are given an array of k linked-lists lists, each linked-list is sorted in ascending order.",
-    difficulty: "hard",
-    category: "linked-lists",
-    language: "cpp",
-    timeLimit: 5000,
-    memoryLimit: 512,
-    submissions: 234,
-    successRate: 45,
-    tags: ["linked-lists", "divide-and-conquer", "heap"],
-  },
-];
+import { useEffect, useState } from "react";
 
 export default function AdminChallengesPage() {
+  const { token } = useAuth();
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiService.getAdminChallenges(token);
+        if (response.success && response.data && response.data.data) {
+          setChallenges(response.data.data);
+        } else {
+          setError(response.message || "Failed to fetch challenges");
+        }
+      } catch (err) {
+        setError("Network error occurred");
+        console.error("Error fetching challenges:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchChallenges();
+  }, [token]);
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "easy":
@@ -165,97 +140,110 @@ export default function AdminChallengesPage() {
         </Select>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="text-center py-8">
+          <div className="text-muted-foreground">Loading challenges...</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-8">
+          <div className="text-red-500">Error: {error}</div>
+        </div>
+      )}
+
       {/* Challenges Grid */}
-      <div className="grid gap-6">
-        {mockChallenges.map((challenge) => (
-          <Card
-            key={challenge.id}
-            className="hover:shadow-lg transition-shadow"
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <CardTitle className="text-xl">
-                      <Link
-                        href={`/admin/challenges/${challenge.id}`}
-                        className="hover:text-primary transition-colors"
-                      >
-                        {challenge.title}
-                      </Link>
-                    </CardTitle>
-                    <Badge variant={getDifficultyBadge(challenge.difficulty)}>
-                      {challenge.difficulty.charAt(0).toUpperCase() +
-                        challenge.difficulty.slice(1)}
-                    </Badge>
-                  </div>
-                  <CardDescription className="mb-3">
-                    {challenge.description}
-                  </CardDescription>
-                  <div className="flex flex-wrap gap-2">
-                    {challenge.tags.map((tag, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {tag}
+      {!loading && !error && (
+        <div className="grid gap-6">
+          {challenges.map((challenge) => (
+            <Card
+              key={challenge.id}
+              className="hover:shadow-lg transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CardTitle className="text-xl">
+                        <Link
+                          href={`/admin/challenges/${challenge.id}`}
+                          className="hover:text-primary transition-colors"
+                        >
+                          {challenge.title}
+                        </Link>
+                      </CardTitle>
+                      <Badge variant={getDifficultyBadge(challenge.difficulty)}>
+                        {challenge.difficulty.charAt(0).toUpperCase() +
+                          challenge.difficulty.slice(1)}
                       </Badge>
-                    ))}
+                    </div>
+                    <CardDescription className="mb-3">
+                      {challenge.description}
+                    </CardDescription>
+                    <div className="flex flex-wrap gap-2">
+                      {challenge.tags.map((tag, index) => (
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/challenges/${challenge.id}`}>
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/challenges/${challenge.id}/edit`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/challenges/${challenge.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/challenges/${challenge.id}/edit`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Code className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Language</div>
-                    <div className="capitalize">{challenge.language}</div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Time Limit</div>
+                      <div>{challenge.time_limit}ms</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Submissions</div>
+                      <div>{challenge.submissions_count}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Star className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Success Rate</div>
+                      <div>{Math.round(challenge.success_rate * 100)}%</div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Time Limit</div>
-                    <div>{challenge.timeLimit}ms</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Submissions</div>
-                    <div>{challenge.submissions}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Star className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Success Rate</div>
-                    <div>{challenge.successRate}%</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

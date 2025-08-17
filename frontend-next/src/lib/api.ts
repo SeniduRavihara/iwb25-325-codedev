@@ -96,6 +96,50 @@ export interface HealthResponse {
   };
 }
 
+// Challenge interfaces
+export interface Challenge {
+  id: number;
+  title: string;
+  description: string;
+  difficulty: string;
+  tags: string[];
+  time_limit: number;
+  memory_limit: number;
+  author_id: number;
+  submissions_count: number;
+  success_rate: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Contest {
+  id: number;
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  status: string;
+  max_participants: number;
+  prizes: string[];
+  rules: string;
+  created_by: number;
+  registration_deadline: string;
+  participants_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TestCase {
+  id: number;
+  challenge_id: number;
+  input_data: string;
+  expected_output: string;
+  is_hidden: boolean;
+  points: number;
+  created_at: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -185,6 +229,47 @@ class ApiService {
 
   async getSupportedLanguages(): Promise<ApiResponse<LanguagesResponse>> {
     return this.request<LanguagesResponse>("/api/languages");
+  }
+
+  // Challenge methods
+  async getChallenges(): Promise<ApiResponse<{ data: Challenge[] }>> {
+    return this.request<{ data: Challenge[] }>("/challenges");
+  }
+
+  async getAdminChallenges(
+    token: string
+  ): Promise<ApiResponse<{ data: Challenge[] }>> {
+    return this.request<{ data: Challenge[] }>("/admin_challenges", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Contest methods
+  async getContests(): Promise<ApiResponse<{ data: Contest[] }>> {
+    return this.request<{ data: Contest[] }>("/contests");
+  }
+
+  async getAdminContests(
+    token: string
+  ): Promise<ApiResponse<{ data: Contest[] }>> {
+    return this.request<{ data: Contest[] }>("/admin_contests", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  // Test case methods
+  async getTestCases(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: TestCase[] }>> {
+    return this.request<{ data: TestCase[] }>("/testcases", {
+      headers: {
+        "X-Challenge-ID": challengeId.toString(),
+      },
+    });
   }
 }
 
