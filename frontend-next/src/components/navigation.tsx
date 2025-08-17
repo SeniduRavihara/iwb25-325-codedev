@@ -17,7 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// Navigation items for authenticated users
+// Navigation items for authenticated users (regular users)
 const userNavigation = [{ name: "Contests", href: "/contests", icon: Trophy }];
 
 // Navigation items for admin users

@@ -1,33 +1,62 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { RichTextEditor } from "@/components/rich-text-editor"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { mockContests, mockChallenges } from "@/lib/mock-data"
-import { X, Save, Clock } from "lucide-react"
-import Link from "next/link"
-import { notFound } from "next/navigation"
+import { Navigation } from "@/components/navigation";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { mockChallenges, mockContests } from "@/lib/mock-data";
+import { Clock, Save, X } from "lucide-react";
+import Link from "next/link";
+import { notFound, useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 
 interface EditContestPageProps {
-  params: {
-    id: string
-  }
+  params: Promise<{
+    id: string;
+  }>;
 }
 
 export default function EditContestPage({ params }: EditContestPageProps) {
-  const contest = mockContests.find((c) => c.id === params.id)
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+  const { id } = use(params);
+  const contest = mockContests.find((c) => c.id === id);
+
+  // Redirect to login if not authenticated, or to home if not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else if (user?.role !== "admin") {
+      router.push("/");
+    }
+  }, [isAuthenticated, user?.role, router]);
 
   if (!contest) {
-    notFound()
+    notFound();
+  }
+
+  // Show loading if not authenticated or not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {!isAuthenticated
+              ? "Redirecting to login..."
+              : "Access denied. Redirecting..."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const [formData, setFormData] = useState({
@@ -40,42 +69,52 @@ export default function EditContestPage({ params }: EditContestPageProps) {
     rules: contest.rules,
     prizes: contest.prizes,
     newPrize: "",
-  })
+  });
 
-  const [selectedChallenges, setSelectedChallenges] = useState<string[]>(contest.challenges)
+  const [selectedChallenges, setSelectedChallenges] = useState<string[]>(
+    contest.challenges
+  );
 
   const addPrize = () => {
-    if (formData.newPrize.trim() && !formData.prizes.includes(formData.newPrize.trim())) {
+    if (
+      formData.newPrize.trim() &&
+      !formData.prizes.includes(formData.newPrize.trim())
+    ) {
       setFormData({
         ...formData,
         prizes: [...formData.prizes, formData.newPrize.trim()],
         newPrize: "",
-      })
+      });
     }
-  }
+  };
 
   const removePrize = (prizeToRemove: string) => {
     setFormData({
       ...formData,
       prizes: formData.prizes.filter((prize) => prize !== prizeToRemove),
-    })
-  }
+    });
+  };
 
   const toggleChallenge = (challengeId: string) => {
     setSelectedChallenges((prev) =>
-      prev.includes(challengeId) ? prev.filter((id) => id !== challengeId) : [...prev, challengeId],
-    )
-  }
+      prev.includes(challengeId)
+        ? prev.filter((id) => id !== challengeId)
+        : [...prev, challengeId]
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (selectedChallenges.length === 0) {
-      alert("Please select at least one challenge")
-      return
+      alert("Please select at least one challenge");
+      return;
     }
     // TODO: Implement contest update logic
-    console.log("Updating contest:", { ...formData, challenges: selectedChallenges })
-  }
+    console.log("Updating contest:", {
+      ...formData,
+      challenges: selectedChallenges,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -85,10 +124,12 @@ export default function EditContestPage({ params }: EditContestPageProps) {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Edit Contest</h1>
-            <p className="text-muted-foreground mt-2">Update contest details and settings</p>
+            <p className="text-muted-foreground mt-2">
+              Update contest details and settings
+            </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href={`/contests/${params.id}`}>Cancel</Link>
+            <Link href={`/admin/contests/${id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -104,7 +145,9 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Enter contest title"
                   required
                 />
@@ -115,7 +158,9 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                   placeholder="Brief description of the contest"
                   rows={3}
                 />
@@ -128,7 +173,9 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                     id="startTime"
                     type="datetime-local"
                     value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startTime: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -139,7 +186,12 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                     id="duration"
                     type="number"
                     value={formData.duration}
-                    onChange={(e) => setFormData({ ...formData, duration: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        duration: Number.parseInt(e.target.value),
+                      })
+                    }
                     min="30"
                     max="480"
                   />
@@ -153,19 +205,31 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                     id="maxParticipants"
                     type="number"
                     value={formData.maxParticipants}
-                    onChange={(e) => setFormData({ ...formData, maxParticipants: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxParticipants: Number.parseInt(e.target.value),
+                      })
+                    }
                     min="1"
                     max="1000"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="registrationDeadline">Registration Deadline</Label>
+                  <Label htmlFor="registrationDeadline">
+                    Registration Deadline
+                  </Label>
                   <Input
                     id="registrationDeadline"
                     type="datetime-local"
                     value={formData.registrationDeadline}
-                    onChange={(e) => setFormData({ ...formData, registrationDeadline: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        registrationDeadline: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
@@ -175,18 +239,29 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                 <Label>Prizes</Label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {formData.prizes.map((prize) => (
-                    <Badge key={prize} variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      key={prize}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       {prize}
-                      <X className="h-3 w-3 cursor-pointer" onClick={() => removePrize(prize)} />
+                      <X
+                        className="h-3 w-3 cursor-pointer"
+                        onClick={() => removePrize(prize)}
+                      />
                     </Badge>
                   ))}
                 </div>
                 <div className="flex gap-2">
                   <Input
                     value={formData.newPrize}
-                    onChange={(e) => setFormData({ ...formData, newPrize: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, newPrize: e.target.value })
+                    }
                     placeholder="Add a prize (e.g., $500 First Place)"
-                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addPrize())}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && (e.preventDefault(), addPrize())
+                    }
                   />
                   <Button type="button" onClick={addPrize}>
                     Add
@@ -204,7 +279,10 @@ export default function EditContestPage({ params }: EditContestPageProps) {
             <CardContent>
               <div className="space-y-4">
                 {mockChallenges.map((challenge) => (
-                  <div key={challenge.id} className="flex items-start space-x-3 p-4 border border-border rounded-lg">
+                  <div
+                    key={challenge.id}
+                    className="flex items-start space-x-3 p-4 border border-border rounded-lg"
+                  >
                     <Checkbox
                       id={`challenge-${challenge.id}`}
                       checked={selectedChallenges.includes(challenge.id)}
@@ -212,7 +290,10 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                     />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <Label htmlFor={`challenge-${challenge.id}`} className="font-medium cursor-pointer">
+                        <Label
+                          htmlFor={`challenge-${challenge.id}`}
+                          className="font-medium cursor-pointer"
+                        >
                           {challenge.title}
                         </Label>
                         <Badge
@@ -220,8 +301,8 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                             challenge.difficulty === "Easy"
                               ? "secondary"
                               : challenge.difficulty === "Medium"
-                                ? "default"
-                                : "destructive"
+                              ? "default"
+                              : "destructive"
                           }
                         >
                           {challenge.difficulty}
@@ -229,7 +310,11 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                       </div>
                       <div className="flex flex-wrap gap-1 mb-2">
                         {challenge.tags.map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
+                          <Badge
+                            key={tag}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {tag}
                           </Badge>
                         ))}
@@ -247,7 +332,9 @@ export default function EditContestPage({ params }: EditContestPageProps) {
               </div>
               {selectedChallenges.length > 0 && (
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <div className="text-sm font-medium">Selected: {selectedChallenges.length} challenges</div>
+                  <div className="text-sm font-medium">
+                    Selected: {selectedChallenges.length} challenges
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -263,7 +350,9 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                 <Label htmlFor="rules">Rules and Guidelines</Label>
                 <RichTextEditor
                   value={formData.rules}
-                  onChange={(value) => setFormData({ ...formData, rules: value })}
+                  onChange={(value) =>
+                    setFormData({ ...formData, rules: value })
+                  }
                   placeholder="Write the contest rules and guidelines..."
                 />
               </div>
@@ -272,7 +361,7 @@ export default function EditContestPage({ params }: EditContestPageProps) {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href={`/contests/${params.id}`}>Cancel</Link>
+              <Link href={`/admin/contests/${id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />
@@ -282,5 +371,5 @@ export default function EditContestPage({ params }: EditContestPageProps) {
         </form>
       </div>
     </div>
-  )
+  );
 }

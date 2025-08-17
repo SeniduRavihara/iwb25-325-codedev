@@ -1,14 +1,53 @@
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockChallenges } from "@/lib/mock-data"
-import { Plus, Search, Clock, Users, TrendingUp } from "lucide-react"
-import Link from "next/link"
+"use client";
+
+import { Navigation } from "@/components/navigation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { mockChallenges } from "@/lib/mock-data";
+import { Clock, Plus, Search, TrendingUp, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function ChallengesPage() {
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated, or to home if not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else if (user?.role !== "admin") {
+      router.push("/");
+    }
+  }, [isAuthenticated, user?.role, router]);
+
+  // Show loading if not authenticated or not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {!isAuthenticated
+              ? "Redirecting to login..."
+              : "Access denied. Redirecting..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -18,11 +57,12 @@ export default function ChallengesPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
             <p className="text-muted-foreground mt-2">
-              Test your coding skills with our collection of programming challenges
+              Test your coding skills with our collection of programming
+              challenges
             </p>
           </div>
           <Button asChild>
-            <Link href="/challenges/add">
+            <Link href="/admin/challenges/add">
               <Plus className="h-4 w-4 mr-2" />
               Add Challenge
             </Link>
@@ -54,7 +94,9 @@ export default function ChallengesPage() {
               <SelectItem value="all">All Categories</SelectItem>
               <SelectItem value="array">Array</SelectItem>
               <SelectItem value="tree">Tree</SelectItem>
-              <SelectItem value="dynamic-programming">Dynamic Programming</SelectItem>
+              <SelectItem value="dynamic-programming">
+                Dynamic Programming
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -62,13 +104,19 @@ export default function ChallengesPage() {
         {/* Challenges Grid */}
         <div className="grid gap-6">
           {mockChallenges.map((challenge) => (
-            <Card key={challenge.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={challenge.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-xl">
-                        <Link href={`/challenges/${challenge.id}`} className="hover:text-primary transition-colors">
+                        <Link
+                          href={`/admin/challenges/${challenge.id}`}
+                          className="hover:text-primary transition-colors"
+                        >
                           {challenge.title}
                         </Link>
                       </CardTitle>
@@ -77,8 +125,8 @@ export default function ChallengesPage() {
                           challenge.difficulty === "Easy"
                             ? "secondary"
                             : challenge.difficulty === "Medium"
-                              ? "default"
-                              : "destructive"
+                            ? "default"
+                            : "destructive"
                         }
                       >
                         {challenge.difficulty}
@@ -93,9 +141,7 @@ export default function ChallengesPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/challenges/${challenge.id}/edit`}>Edit</Link>
-                    </Button>
+                    {/* Edit button removed - this page should only be accessible to admins */}
                   </div>
                 </div>
               </CardHeader>
@@ -120,5 +166,5 @@ export default function ChallengesPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

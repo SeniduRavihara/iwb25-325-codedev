@@ -18,14 +18,21 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { use, useEffect } from "react";
 
-export default function ContestLeaderboardPage() {
-  const params = useParams();
-  const contestId = params.id as string;
+interface ContestLeaderboardPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function ContestLeaderboardPage({
+  params,
+}: ContestLeaderboardPageProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const { id } = use(params);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -47,7 +54,7 @@ export default function ContestLeaderboardPage() {
   }
 
   // Find the contest
-  const contest = mockContests.find((c) => c.id === contestId);
+  const contest = mockContests.find((c) => c.id === id);
   if (!contest) {
     return (
       <div className="min-h-screen bg-background">
@@ -74,7 +81,7 @@ export default function ContestLeaderboardPage() {
 
   // Get participants for this contest
   const participants = mockContestParticipants.filter(
-    (p) => p.contestId === contestId
+    (p) => p.contestId === id
   );
   const sortedParticipants = [...participants].sort((a, b) => a.rank - b.rank);
 
@@ -123,7 +130,7 @@ export default function ContestLeaderboardPage() {
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/contests/${contestId}`}>
+              <Link href={`/contests/${id}`}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Contest
               </Link>

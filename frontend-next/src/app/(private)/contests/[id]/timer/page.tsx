@@ -8,14 +8,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { mockContests } from "@/lib/mock-data";
 import { ArrowLeft, Calendar, Play, Trophy } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 
-export default function ContestTimerPage() {
-  const params = useParams();
-  const contestId = params.id as string;
+interface ContestTimerPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default function ContestTimerPage({ params }: ContestTimerPageProps) {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const { id } = use(params);
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -31,7 +36,7 @@ export default function ContestTimerPage() {
   }, [isAuthenticated, router]);
 
   // Find the contest
-  const contest = mockContests.find((c) => c.id === contestId);
+  const contest = mockContests.find((c) => c.id === id);
   if (!contest) {
     return (
       <div className="min-h-screen bg-background">
@@ -75,8 +80,8 @@ export default function ContestTimerPage() {
 
         setTimeLeft({ days, hours, minutes, seconds });
       } else {
-        // Contest has started, redirect to contest page
-        router.push(`/contests/${contestId}`);
+        // Contest has started, redirect to participate page
+        router.push(`/contests/${id}/participate`);
       }
     };
 
@@ -84,7 +89,7 @@ export default function ContestTimerPage() {
     const timer = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(timer);
-  }, [contest.startTime, contestId, router]);
+  }, [contest.startTime, id, router]);
 
   // Show loading if not authenticated
   if (!isAuthenticated) {
@@ -124,7 +129,7 @@ export default function ContestTimerPage() {
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/contests/${contestId}`}>
+              <Link href={`/contests/${id}`}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Contest
               </Link>
@@ -256,7 +261,7 @@ export default function ContestTimerPage() {
         <div className="text-center space-y-4">
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="px-8 py-4 text-lg" asChild>
-              <Link href={`/contests/${contestId}/leaderboard`}>
+              <Link href={`/contests/${id}/leaderboard`}>
                 <Trophy className="h-5 w-5 mr-2" />
                 View Leaderboard
               </Link>
@@ -267,7 +272,7 @@ export default function ContestTimerPage() {
               className="px-8 py-4 text-lg"
               asChild
             >
-              <Link href={`/contests/${contestId}`}>
+              <Link href={`/contests/${id}`}>
                 <Play className="h-5 w-5 mr-2" />
                 Contest Details
               </Link>
@@ -275,8 +280,8 @@ export default function ContestTimerPage() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            The contest will automatically start when the countdown reaches
-            zero.
+            The contest will automatically start when the countdown reaches zero
+            and redirect you to the participation page.
           </p>
         </div>
       </div>

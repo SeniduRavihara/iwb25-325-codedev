@@ -1,22 +1,42 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Navigation } from "@/components/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RichTextEditor } from "@/components/rich-text-editor"
-import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, X, Save } from "lucide-react"
-import type { TestCase } from "@/lib/mock-data"
-import Link from "next/link"
+import { Navigation } from "@/components/navigation";
+import { RichTextEditor } from "@/components/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import type { TestCase } from "@/lib/mock-data";
+import { Plus, Save, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function AddChallengePage() {
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated, or to home if not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else if (user?.role !== "admin") {
+      router.push("/");
+    }
+  }, [isAuthenticated, user?.role, router]);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -25,28 +45,31 @@ export default function AddChallengePage() {
     memoryLimit: 256,
     tags: [] as string[],
     newTag: "",
-  })
+  });
 
   const [testCases, setTestCases] = useState<TestCase[]>([
     { id: "1", input: "", expectedOutput: "", isHidden: false, points: 50 },
-  ])
+  ]);
 
   const addTag = () => {
-    if (formData.newTag.trim() && !formData.tags.includes(formData.newTag.trim())) {
+    if (
+      formData.newTag.trim() &&
+      !formData.tags.includes(formData.newTag.trim())
+    ) {
       setFormData({
         ...formData,
         tags: [...formData.tags, formData.newTag.trim()],
         newTag: "",
-      })
+      });
     }
-  }
+  };
 
   const removeTag = (tagToRemove: string) => {
     setFormData({
       ...formData,
       tags: formData.tags.filter((tag) => tag !== tagToRemove),
-    })
-  }
+    });
+  };
 
   const addTestCase = () => {
     const newTestCase: TestCase = {
@@ -55,24 +78,46 @@ export default function AddChallengePage() {
       expectedOutput: "",
       isHidden: false,
       points: 50,
-    }
-    setTestCases([...testCases, newTestCase])
-  }
+    };
+    setTestCases([...testCases, newTestCase]);
+  };
 
-  const updateTestCase = (id: string, field: keyof TestCase, value: any) => {
-    setTestCases(testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc)))
-  }
+  const updateTestCase = (
+    id: string,
+    field: keyof TestCase,
+    value: string | number | boolean
+  ) => {
+    setTestCases(
+      testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc))
+    );
+  };
 
   const removeTestCase = (id: string) => {
     if (testCases.length > 1) {
-      setTestCases(testCases.filter((tc) => tc.id !== id))
+      setTestCases(testCases.filter((tc) => tc.id !== id));
     }
-  }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     // TODO: Implement challenge creation logic
-    console.log("Creating challenge:", { ...formData, testCases })
+    console.log("Creating challenge:", { ...formData, testCases });
+  };
+
+  // Show loading if not authenticated or not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {!isAuthenticated
+              ? "Redirecting to login..."
+              : "Access denied. Redirecting..."}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -82,11 +127,15 @@ export default function AddChallengePage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Add New Challenge</h1>
-            <p className="text-muted-foreground mt-2">Create a new coding challenge for the platform</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              Add New Challenge
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Create a new coding challenge for the platform
+            </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/challenges">Cancel</Link>
+            <Link href="/admin/challenges">Cancel</Link>
           </Button>
         </div>
 
@@ -98,11 +147,13 @@ export default function AddChallengePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Challenge Title</Label>
+                <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Enter challenge title"
                   required
                 />
@@ -112,15 +163,22 @@ export default function AddChallengePage() {
                 <Label htmlFor="description">Description</Label>
                 <RichTextEditor
                   value={formData.description}
-                  onChange={(value) => setFormData({ ...formData, description: value })}
-                  placeholder="Write the challenge description with examples..."
+                  onChange={(value: string) =>
+                    setFormData({ ...formData, description: value })
+                  }
+                  placeholder="Enter challenge description"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="difficulty">Difficulty</Label>
-                  <Select onValueChange={(value) => setFormData({ ...formData, difficulty: value })}>
+                  <Select
+                    value={formData.difficulty}
+                    onValueChange={(value: any) =>
+                      setFormData({ ...formData, difficulty: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
@@ -138,9 +196,14 @@ export default function AddChallengePage() {
                     id="timeLimit"
                     type="number"
                     value={formData.timeLimit}
-                    onChange={(e) => setFormData({ ...formData, timeLimit: Number.parseInt(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        timeLimit: parseInt(e.target.value),
+                      })
+                    }
                     min="1"
-                    max="180"
+                    max="300"
                   />
                 </div>
 
@@ -150,33 +213,52 @@ export default function AddChallengePage() {
                     id="memoryLimit"
                     type="number"
                     value={formData.memoryLimit}
-                    onChange={(e) => setFormData({ ...formData, memoryLimit: Number.parseInt(e.target.value) })}
-                    min="64"
-                    max="1024"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        memoryLimit: parseInt(e.target.value),
+                      })
+                    }
+                    min="16"
+                    max="2048"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>Tags</Label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {formData.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                      {tag}
-                      <X className="h-3 w-3 cursor-pointer" onClick={() => removeTag(tag)} />
-                    </Badge>
-                  ))}
-                </div>
                 <div className="flex gap-2">
                   <Input
                     value={formData.newTag}
-                    onChange={(e) => setFormData({ ...formData, newTag: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, newTag: e.target.value })
+                    }
                     placeholder="Add a tag"
-                    onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && (e.preventDefault(), addTag())
+                    }
                   />
-                  <Button type="button" onClick={addTag}>
-                    Add
+                  <Button type="button" onClick={addTag} size="sm">
+                    <Plus className="h-4 w-4" />
                   </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -193,73 +275,92 @@ export default function AddChallengePage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               {testCases.map((testCase, index) => (
-                <div key={testCase.id} className="border border-border rounded-lg p-4">
+                <div
+                  key={testCase.id}
+                  className="border border-border rounded-lg p-4"
+                >
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-medium">Test Case {index + 1}</h4>
-                    {testCases.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeTestCase(testCase.id)}>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm">Hidden:</Label>
+                      <input
+                        type="checkbox"
+                        checked={testCase.isHidden}
+                        onChange={(e) =>
+                          updateTestCase(
+                            testCase.id,
+                            "isHidden",
+                            e.target.checked
+                          )
+                        }
+                        className="rounded"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeTestCase(testCase.id)}
+                        disabled={testCases.length === 1}
+                      >
                         <X className="h-4 w-4" />
                       </Button>
-                    )}
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Input</Label>
                       <Textarea
                         value={testCase.input}
-                        onChange={(e) => updateTestCase(testCase.id, "input", e.target.value)}
-                        placeholder="Enter test input"
-                        rows={3}
+                        onChange={(e) =>
+                          updateTestCase(testCase.id, "input", e.target.value)
+                        }
+                        placeholder="Enter test case input"
+                        rows={4}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Expected Output</Label>
                       <Textarea
                         value={testCase.expectedOutput}
-                        onChange={(e) => updateTestCase(testCase.id, "expectedOutput", e.target.value)}
+                        onChange={(e) =>
+                          updateTestCase(
+                            testCase.id,
+                            "expectedOutput",
+                            e.target.value
+                          )
+                        }
                         placeholder="Enter expected output"
-                        rows={3}
+                        rows={4}
                       />
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`hidden-${testCase.id}`}
-                        checked={testCase.isHidden}
-                        onChange={(e) => updateTestCase(testCase.id, "isHidden", e.target.checked)}
-                        className="rounded border-border"
-                      />
-                      <Label htmlFor={`hidden-${testCase.id}`}>Hidden test case</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor={`points-${testCase.id}`}>Points:</Label>
-                      <Input
-                        id={`points-${testCase.id}`}
-                        type="number"
-                        value={testCase.points}
-                        onChange={(e) => updateTestCase(testCase.id, "points", Number.parseInt(e.target.value))}
-                        className="w-20"
-                        min="1"
-                        max="100"
-                      />
-                    </div>
+                  <div className="mt-4">
+                    <Label>Points</Label>
+                    <Input
+                      type="number"
+                      value={testCase.points}
+                      onChange={(e) =>
+                        updateTestCase(
+                          testCase.id,
+                          "points",
+                          parseInt(e.target.value)
+                        )
+                      }
+                      min="1"
+                      max="100"
+                      className="w-24"
+                    />
                   </div>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/challenges">Cancel</Link>
-            </Button>
-            <Button type="submit">
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <Button type="submit" size="lg">
               <Save className="h-4 w-4 mr-2" />
               Create Challenge
             </Button>
@@ -267,5 +368,5 @@ export default function AddChallengePage() {
         </form>
       </div>
     </div>
-  )
+  );
 }
