@@ -36,6 +36,66 @@ export interface AuthResponse {
   message: string;
 }
 
+// Code execution interfaces
+export interface CodeExecutionRequest {
+  code: string;
+  language: string;
+}
+
+export interface CodeExecutionResponse {
+  success: boolean;
+  language?: string;
+  output?: string;
+  error?: string;
+  executionTime?: {
+    milliseconds: number;
+    seconds: number;
+  };
+  performance?: {
+    memoryLimit: string;
+    cpuLimit: string;
+    processLimit: number;
+    networkAccess: boolean;
+  };
+  analysis?: {
+    linesOfCode: number;
+    codeLength: number;
+    estimatedComplexity?: {
+      timeComplexity: string;
+      spaceComplexity: string;
+      detectedPatterns: string[];
+    };
+    patterns?: string[];
+  };
+  exitCode?: number;
+  timestamp?: string;
+}
+
+export interface LanguageInfo {
+  name: string;
+  version: string;
+  fileExtension: string;
+  example: string;
+}
+
+export interface LanguagesResponse {
+  supportedLanguages: LanguageInfo[];
+}
+
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  services: {
+    docker: string;
+    codeExecution: string;
+  };
+  systemInfo: {
+    memoryLimit: string;
+    timeoutLimit: string;
+    supportedLanguages: string[];
+  };
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -107,6 +167,24 @@ class ApiService {
 
   async healthCheck(): Promise<ApiResponse<string>> {
     return this.request<string>("/health");
+  }
+
+  // Code execution methods
+  async executeCode(
+    request: CodeExecutionRequest
+  ): Promise<ApiResponse<CodeExecutionResponse>> {
+    return this.request<CodeExecutionResponse>("/api/submit", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getCodeExecutionHealth(): Promise<ApiResponse<HealthResponse>> {
+    return this.request<HealthResponse>("/api/health");
+  }
+
+  async getSupportedLanguages(): Promise<ApiResponse<LanguagesResponse>> {
+    return this.request<LanguagesResponse>("/api/languages");
   }
 }
 
