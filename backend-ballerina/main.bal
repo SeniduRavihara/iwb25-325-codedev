@@ -487,10 +487,10 @@ service / on new http:Listener(serverPort) {
     // Get all contests (public)
     resource function get contests(http:Caller caller, http:Request req) returns error? {
         // Update contest status based on current time
-        error? updateResult = database:updateContestStatus();
-        if updateResult is error {
-            io:println("Warning: Failed to update contest status: " + updateResult.message());
-        }
+        // error? updateResult = database:updateContestStatus();
+        // if updateResult is error {
+        //     io:println("Warning: Failed to update contest status: " + updateResult.message());
+        // }
 
         models:Contest[]|error contests = database:getAllContests();
 
