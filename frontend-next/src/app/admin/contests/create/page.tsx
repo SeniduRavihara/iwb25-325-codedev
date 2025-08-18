@@ -240,6 +240,7 @@ export default function CreateContestPage() {
                     setFormData({ ...formData, title: e.target.value })
                   }
                   placeholder="Enter contest title"
+                  className="border-2 border-border focus:border-primary"
                   required
                 />
               </div>
@@ -253,6 +254,7 @@ export default function CreateContestPage() {
                     setFormData({ ...formData, description: e.target.value })
                   }
                   placeholder="Brief description of the contest"
+                  className="border-2 border-border focus:border-primary"
                   rows={3}
                 />
               </div>
@@ -267,6 +269,7 @@ export default function CreateContestPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, startTime: e.target.value })
                     }
+                    className="border-2 border-border focus:border-primary"
                     required
                   />
                 </div>
@@ -283,6 +286,7 @@ export default function CreateContestPage() {
                         duration: Number.parseInt(e.target.value),
                       })
                     }
+                    className="border-2 border-border focus:border-primary"
                     min="30"
                     max="480"
                   />
@@ -302,6 +306,7 @@ export default function CreateContestPage() {
                         maxParticipants: Number.parseInt(e.target.value),
                       })
                     }
+                    className="border-2 border-border focus:border-primary"
                     min="1"
                     max="1000"
                   />
@@ -321,6 +326,7 @@ export default function CreateContestPage() {
                         registrationDeadline: e.target.value,
                       })
                     }
+                    className="border-2 border-border focus:border-primary"
                     required
                   />
                 </div>
@@ -350,6 +356,7 @@ export default function CreateContestPage() {
                       setFormData({ ...formData, newPrize: e.target.value })
                     }
                     placeholder="Add a prize (e.g., $500 First Place)"
+                    className="border-2 border-border focus:border-primary"
                     onKeyPress={(e) =>
                       e.key === "Enter" && (e.preventDefault(), addPrize())
                     }
@@ -385,7 +392,7 @@ export default function CreateContestPage() {
                     {challenges.map((challenge) => (
                       <div
                         key={challenge.id}
-                        className="flex items-start space-x-3 p-4 border border-border rounded-lg"
+                        className="flex items-start space-x-3 p-4 border-2 border-border rounded-lg hover:border-primary/50"
                       >
                         <Checkbox
                           id={`challenge-${challenge.id}`}
@@ -395,6 +402,7 @@ export default function CreateContestPage() {
                           onCheckedChange={() =>
                             toggleChallenge(challenge.id.toString())
                           }
+                          className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">

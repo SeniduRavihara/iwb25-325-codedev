@@ -16,7 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { Chrome, Eye, EyeOff, Github, Lock, Mail, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+// import { Chrome, Github } from "lucide-react"; // Commented out - used for social login buttons
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -206,6 +207,8 @@ export default function SignupPage() {
               </Button>
             </form>
 
+            {/* GitHub and Google login buttons - currently commented out */}
+            {/*
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
@@ -233,6 +236,7 @@ export default function SignupPage() {
                 Google
               </Button>
             </div>
+            */}
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">

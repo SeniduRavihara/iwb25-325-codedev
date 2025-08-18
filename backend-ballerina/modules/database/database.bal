@@ -554,22 +554,25 @@ public function getContestStatus(int contestId) returns string|error {
 
 // Update specific contest status to active
 public function updateContestToActive(int contestId) returns error? {
-    time:Utc currentTime = time:utcNow();
-    string currentTimeStr = time:utcToString(currentTime);
+    // Debug: Print before database operation
+    io:println("📊 DATABASE: Attempting to update contest " + contestId.toString() + " from 'upcoming' to 'active'");
 
-    // Update specific contest to active if it should be active
+    // Simple update: just change status from 'upcoming' to 'active' for the given contest ID
     sql:ExecutionResult|error activeResult = dbClient->execute(`
         UPDATE contests 
         SET status = 'active' 
         WHERE id = ${contestId}
-        AND status = 'upcoming' 
-        AND datetime(start_time) <= datetime('${currentTimeStr}')
-        AND datetime(end_time) > datetime('${currentTimeStr}')
+        AND status = 'upcoming'
     `);
 
     if activeResult is error {
+        io:println("💥 DATABASE EXECUTE ERROR: " + activeResult.message());
         return error("Failed to update contest to active: " + activeResult.message());
     }
+
+    // Debug: Print after successful database operation
+    sql:ExecutionResult result = activeResult;
+    io:println("🎯 DATABASE RESULT: Affected rows = " + result.affectedRowCount.toString());
 
     return;
 }

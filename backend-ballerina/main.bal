@@ -1215,9 +1215,13 @@ service / on new http:Listener(serverPort) {
 
     // Update specific contest status (public - for timer-triggered updates)
     resource function post contests/[int contestId]/update_status(http:Caller caller, http:Request req) returns error? {
+        // Debug: Print when API is called
+        io:println("🔥 API CALLED: POST /contests/" + contestId.toString() + "/update_status");
+
         // Update specific contest to active
         error? updateResult = database:updateContestToActive(contestId);
         if updateResult is error {
+            io:println("❌ DATABASE ERROR: " + updateResult.message());
             http:Response response = new;
             response.statusCode = 500;
             response.setJsonPayload({
@@ -1228,6 +1232,7 @@ service / on new http:Listener(serverPort) {
             return;
         }
 
+        io:println("✅ DATABASE SUCCESS: Contest " + contestId.toString() + " status updated to 'active'");
         http:Response response = new;
         response.statusCode = 200;
         response.setJsonPayload({
