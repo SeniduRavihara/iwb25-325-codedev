@@ -924,6 +924,128 @@ service / on new http:Listener(serverPort) {
         });
         check caller->respond(response);
     }
+
+    // Delete challenge (admin only)
+    resource function delete challenges/[int challengeId](http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Delete challenge from database
+        sql:ExecutionResult|error result = database:deleteChallenge(challengeId);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to delete challenge: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Challenge deleted successfully"
+        });
+        check caller->respond(response);
+    }
+
+    // Delete contest (admin only)
+    resource function delete contests/[int contestId](http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Delete contest from database
+        sql:ExecutionResult|error result = database:deleteContest(contestId);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to delete contest: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Contest deleted successfully"
+        });
+        check caller->respond(response);
+    }
 }
 
 // Function to analyze code complexity

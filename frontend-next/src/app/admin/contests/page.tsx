@@ -38,6 +38,7 @@ export default function AdminContestsPage() {
   const [contests, setContests] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingContest, setDeletingContest] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchContests = async () => {
@@ -79,6 +80,39 @@ export default function AdminContestsPage() {
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleDeleteContest = async (contestId: number) => {
+    if (!token) {
+      alert("Authentication required");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete "${
+          contests.find((c) => c.id === contestId)?.title
+        }"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingContest(contestId);
+    try {
+      const response = await apiService.deleteContest(contestId, token);
+      if (response.success) {
+        setContests(contests.filter((c) => c.id !== contestId));
+        alert("Contest deleted successfully");
+      } else {
+        alert(response.message || "Failed to delete contest");
+      }
+    } catch (err) {
+      console.error("Error deleting contest:", err);
+      alert("Network error occurred");
+    } finally {
+      setDeletingContest(null);
+    }
   };
 
   // Show loading state
@@ -193,8 +227,14 @@ export default function AdminContestsPage() {
                     variant="outline"
                     size="sm"
                     className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteContest(contest.id)}
+                    disabled={deletingContest === contest.id}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {deletingContest === contest.id ? (
+                      <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>

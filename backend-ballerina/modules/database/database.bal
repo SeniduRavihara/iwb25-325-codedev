@@ -304,3 +304,51 @@ public function debugContestsSimple() returns record {|int id; string title;|}[]
     check contestStream.close();
     return contests;
 }
+
+// Delete challenge
+public function deleteChallenge(int challengeId) returns sql:ExecutionResult|error {
+    // First delete related test cases
+    sql:ExecutionResult|error testCasesResult = dbClient->execute(`
+        DELETE FROM test_cases WHERE challenge_id = ${challengeId}
+    `);
+    if testCasesResult is error {
+        return error("Failed to delete test cases: " + testCasesResult.message());
+    }
+
+    // Then delete related contest challenges
+    sql:ExecutionResult|error contestChallengesResult = dbClient->execute(`
+        DELETE FROM contest_challenges WHERE challenge_id = ${challengeId}
+    `);
+    if contestChallengesResult is error {
+        return error("Failed to delete contest challenges: " + contestChallengesResult.message());
+    }
+
+    // Finally delete the challenge
+    return dbClient->execute(`
+        DELETE FROM challenges WHERE id = ${challengeId}
+    `);
+}
+
+// Delete contest
+public function deleteContest(int contestId) returns sql:ExecutionResult|error {
+    // First delete related contest participants
+    sql:ExecutionResult|error participantsResult = dbClient->execute(`
+        DELETE FROM contest_participants WHERE contest_id = ${contestId}
+    `);
+    if participantsResult is error {
+        return error("Failed to delete contest participants: " + participantsResult.message());
+    }
+
+    // Then delete related contest challenges
+    sql:ExecutionResult|error contestChallengesResult = dbClient->execute(`
+        DELETE FROM contest_challenges WHERE contest_id = ${contestId}
+    `);
+    if contestChallengesResult is error {
+        return error("Failed to delete contest challenges: " + contestChallengesResult.message());
+    }
+
+    // Finally delete the contest
+    return dbClient->execute(`
+        DELETE FROM contests WHERE id = ${contestId}
+    `);
+}

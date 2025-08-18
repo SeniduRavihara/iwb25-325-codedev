@@ -320,6 +320,31 @@ class ApiService {
       body: JSON.stringify(contestData),
     });
   }
+
+  // Delete methods
+  async deleteChallenge(
+    challengeId: number,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/challenges/${challengeId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async deleteContest(
+    contestId: number,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
 }
 
 export const apiService = new ApiService();

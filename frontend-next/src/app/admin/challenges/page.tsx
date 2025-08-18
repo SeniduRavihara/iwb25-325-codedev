@@ -37,6 +37,9 @@ export default function AdminChallengesPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingChallenge, setDeletingChallenge] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchChallenges = async () => {
@@ -87,6 +90,39 @@ export default function AdminChallengesPage() {
         return "destructive";
       default:
         return "default";
+    }
+  };
+
+  const handleDeleteChallenge = async (challengeId: number) => {
+    if (!token) {
+      alert("Authentication required");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Are you sure you want to delete "${
+          challenges.find((c) => c.id === challengeId)?.title
+        }"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingChallenge(challengeId);
+    try {
+      const response = await apiService.deleteChallenge(challengeId, token);
+      if (response.success) {
+        setChallenges(challenges.filter((c) => c.id !== challengeId));
+        alert("Challenge deleted successfully");
+      } else {
+        alert(response.message || "Failed to delete challenge");
+      }
+    } catch (err) {
+      console.error("Error deleting challenge:", err);
+      alert("Network error occurred");
+    } finally {
+      setDeletingChallenge(null);
     }
   };
 
@@ -220,8 +256,14 @@ export default function AdminChallengesPage() {
                       variant="outline"
                       size="sm"
                       className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteChallenge(challenge.id)}
+                      disabled={deletingChallenge === challenge.id}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {deletingChallenge === challenge.id ? (
+                        <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
