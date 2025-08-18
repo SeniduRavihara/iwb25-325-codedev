@@ -1,135 +1,177 @@
 "use client";
 
-import { CodeEditor } from "@/components/code-editor";
 import { Navigation } from "@/components/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/contexts/AuthContext";
-import { mockChallenges, mockContests } from "@/lib/mock-data";
 import {
-  ArrowLeft,
-  BarChart3,
-  CheckCircle,
-  Circle,
-  Clock,
-  Trophy,
-} from "lucide-react";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService, type Challenge, type Contest } from "@/lib/api";
+import { Clock, Code, Trophy, Users } from "lucide-react";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { use } from "react";
 
-interface ParticipateContestPageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
-
-export default function ParticipateContestPage({
+export default function ContestParticipatePage({
   params,
-}: ParticipateContestPageProps) {
-  const { isAuthenticated, user } = useAuth();
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
-  const { id } = use(params);
-  const contest = mockContests.find((c) => c.id === id);
+  const [contest, setContest] = useState<Contest | null>(null);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
+  const [hasRedirectedToResults, setHasRedirectedToResults] = useState(false);
 
-  // Redirect to login if not authenticated
+  const resolvedParams = use(params);
+  const contestId = parseInt(resolvedParams.id);
+
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
-
-  if (!contest) {
-    notFound();
-  }
-
-  const contestChallenges = mockChallenges.filter((c) =>
-    contest.challenges.includes(c.id)
-  );
-  const [selectedChallenge, setSelectedChallenge] = useState(
-    contestChallenges[0]
-  );
-  const [timeRemaining, setTimeRemaining] = useState(contest.duration * 60); // Convert to seconds
-  const [solvedChallenges, setSolvedChallenges] = useState<string[]>([]);
-  const [contestStartTime, setContestStartTime] = useState<number>(
-    new Date(contest.startTime).getTime()
-  );
-  const [timeUntilStart, setTimeUntilStart] = useState<number>(0);
-
-  // Check if contest has started
-  useEffect(() => {
-    const checkContestStart = () => {
-      const now = new Date().getTime();
-      const timeUntilStart = contestStartTime - now;
-
-      if (timeUntilStart > 0) {
-        setTimeUntilStart(timeUntilStart);
-        // Contest hasn't started yet, redirect to timer page
-        router.push(`/contests/${id}/timer`);
+    const fetchContestDetails = async () => {
+      if (!isAuthenticated) {
+        router.push("/login");
         return;
+      }
+
+      try {
+        // Fetch contest details
+        const response = await apiService.getContests();
+        if (response.success && response.data && response.data.data) {
+          const foundContest = response.data.data.find(
+            (c: Contest) => c.id === contestId
+          );
+          if (foundContest) {
+            setContest(foundContest);
+
+            // Check if contest is active by checking the time
+            const now = new Date().getTime();
+            const startTime = new Date(foundContest.start_time).getTime();
+            const endTime = new Date(foundContest.end_time).getTime();
+
+            // DISABLED: Time checks to prevent redirects
+            // if (now < startTime) {
+            //   setError("This contest has not started yet");
+            //   return;
+            // }
+
+            // if (now > endTime) {
+            //   setError("This contest has already ended");
+            //   return;
+            // }
+          } else {
+            setError("Contest not found");
+          }
+        } else {
+          setError("Failed to fetch contest details");
+        }
+
+        // Fetch challenges for this contest
+        const challengesResponse = await apiService.getChallenges();
+        if (
+          challengesResponse.success &&
+          challengesResponse.data &&
+          challengesResponse.data.data
+        ) {
+          // For now, show all challenges. In the future, this should filter by contest
+          setChallenges(challengesResponse.data.data);
+        }
+      } catch (err) {
+        setError("Network error occurred");
+        console.error("Error fetching contest details:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    checkContestStart();
-    const interval = setInterval(checkContestStart, 1000);
-    return () => clearInterval(interval);
-  }, [contestStartTime, id, router]);
+    fetchContestDetails();
+  }, [contestId, isAuthenticated, router]);
 
-  // Timer countdown for contest duration
+  // Timer effect for contest duration
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer);
-          // Contest time is up, redirect to results or leaderboard
-          router.push(`/contests/${id}/leaderboard`);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (!contest) return;
 
-    return () => clearInterval(timer);
-  }, [id, router]);
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const endTime = new Date(contest.end_time).getTime();
+      const timeLeft = endTime - now;
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      if (timeLeft <= 0 && !hasRedirectedToResults) {
+        // Contest has ended
+        // DISABLED: setHasRedirectedToResults(true);
+        // DISABLED: router.push(`/contests/${contestId}/results`);
+        // return;
+      }
+
+      const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+      setTimeRemaining({ hours, minutes, seconds });
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [contest, contestId, router]);
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
   };
 
-  const handleSubmit = (code: string, language: string) => {
-    // TODO: Implement contest submission logic
-    console.log("Contest submission:", {
-      contestId: id,
-      challengeId: selectedChallenge.id,
-      code,
-      language,
-    });
-
-    // Mock: Mark challenge as solved
-    if (!solvedChallenges.includes(selectedChallenge.id)) {
-      setSolvedChallenges([...solvedChallenges, selectedChallenge.id]);
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case "easy":
+        return "bg-green-100 text-green-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "hard":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
-
-    alert("Solution submitted successfully!");
   };
 
-  const progressPercentage =
-    (solvedChallenges.length / contestChallenges.length) * 100;
-
-  // Show loading if not authenticated
-  if (!isAuthenticated) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading contest...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !contest) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="text-red-500">
+              Error: {error || "Contest not found"}
+            </div>
+            <Button asChild className="mt-4">
+              <Link href="/contests">Back to Contests</Link>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -139,186 +181,198 @@ export default function ParticipateContestPage({
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Contest Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/contests/${id}`}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Exit Contest
-              </Link>
-            </Button>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-xl font-bold">{contest.title}</h1>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Trophy className="h-4 w-4" />
-                  {solvedChallenges.length}/{contestChallenges.length} solved
-                </div>
-                <Progress value={progressPercentage} className="w-24 h-2" />
-              </div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                {contest.title}
+              </h1>
+              <p className="text-muted-foreground">{contest.description}</p>
             </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Contest Navigation */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/contests/${id}/leaderboard`}>
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Leaderboard
-                </Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/contests/${id}/timer`}>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Timer
-                </Link>
-              </Button>
-            </div>
-
-            <div className="text-center">
-              <div className="text-2xl font-mono font-bold text-primary">
-                {formatTime(timeRemaining)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Time Remaining
-              </div>
-            </div>
+            <Button variant="outline" asChild>
+              <Link href={`/contests/${contestId}`}>← Back to Contest</Link>
+            </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
-          {/* Problem List Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Problems</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {contestChallenges.map((challenge, index) => (
-                  <button
-                    key={challenge.id}
-                    onClick={() => setSelectedChallenge(challenge)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedChallenge.id === challenge.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-muted-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium">
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      {solvedChallenges.includes(challenge.id) ? (
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground" />
-                      )}
+        {/* Contest Timer */}
+        {timeRemaining && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-center">Time Remaining</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center">
+                <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">
+                      {timeRemaining.hours.toString().padStart(2, "0")}
                     </div>
-                    <div className="text-xs font-medium truncate">
-                      {challenge.title}
+                    <div className="text-sm text-muted-foreground">Hours</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">
+                      {timeRemaining.minutes.toString().padStart(2, "0")}
                     </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Badge
-                        variant={
-                          challenge.difficulty === "Easy"
-                            ? "secondary"
-                            : challenge.difficulty === "Medium"
-                            ? "default"
-                            : "destructive"
+                    <div className="text-sm text-muted-foreground">Minutes</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">
+                      {timeRemaining.seconds.toString().padStart(2, "0")}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Seconds</div>
+                  </div>
+                </div>
+                <p className="text-muted-foreground mt-4">
+                  Complete the challenges before time runs out!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Contest Info */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Contest Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">Duration</div>
+                  <div>
+                    {Math.floor(contest.duration / 60)}h {contest.duration % 60}
+                    m
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">Participants</div>
+                  <div>
+                    {contest.participants_count}
+                    {contest.max_participants
+                      ? `/${contest.max_participants}`
+                      : ""}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Code className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">Problems</div>
+                  <div>{challenges.length} challenges</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Trophy className="h-4 w-4" />
+                <div>
+                  <div className="font-medium">Prizes</div>
+                  <div>
+                    {(() => {
+                      try {
+                        if (!contest.prizes) {
+                          return "No prizes";
                         }
-                        className="text-xs px-1 py-0"
-                      >
-                        {challenge.difficulty[0]}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {challenge.timeLimit}m
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Problem Description */}
-          <div className="lg:col-span-2">
-            <Card className="h-fit">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-lg">
-                    {selectedChallenge.title}
-                  </CardTitle>
-                  <Badge
-                    variant={
-                      selectedChallenge.difficulty === "Easy"
-                        ? "secondary"
-                        : selectedChallenge.difficulty === "Medium"
-                        ? "default"
-                        : "destructive"
-                    }
-                  >
-                    {selectedChallenge.difficulty}
-                  </Badge>
-                  {solvedChallenges.includes(selectedChallenge.id) && (
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                  )}
+                        const prizesArray = JSON.parse(contest.prizes);
+                        return prizesArray.length > 0
+                          ? `${prizesArray.length} prize(s)`
+                          : "No prizes";
+                      } catch (error) {
+                        return "No prizes";
+                      }
+                    })()}
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Challenges */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Contest Problems</CardTitle>
+            <CardDescription>
+              Solve these challenges to earn points and climb the leaderboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {challenges.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground">
+                  No challenges available for this contest yet.
+                </div>
+              </div>
+            ) : (
+              challenges.map((challenge, index) => (
                 <div
-                  className="prose prose-invert max-w-none text-sm"
-                  dangerouslySetInnerHTML={{
-                    __html: selectedChallenge.description,
-                  }}
-                />
-
-                {/* Sample Test Cases */}
-                <div className="mt-6 space-y-3">
-                  <h4 className="font-medium text-sm">Sample Test Cases:</h4>
-                  {selectedChallenge.testCases
-                    .filter((tc) => !tc.isHidden)
-                    .map((testCase, index) => (
-                      <div key={testCase.id} className="space-y-2">
-                        <div className="text-xs font-medium">
-                          Example {index + 1}:
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          <div>
-                            <div className="text-xs text-muted-foreground">
-                              Input:
-                            </div>
-                            <pre className="bg-muted p-2 rounded text-xs">
-                              {testCase.input}
-                            </pre>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">
-                              Output:
-                            </div>
-                            <pre className="bg-muted p-2 rounded text-xs">
-                              {testCase.expectedOutput}
-                            </pre>
-                          </div>
-                        </div>
+                  key={challenge.id}
+                  className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+                      {String.fromCharCode(65 + index)}
+                    </div>
+                    <div>
+                      <div className="font-medium">{challenge.title}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge
+                          variant={
+                            challenge.difficulty.toLowerCase() === "easy"
+                              ? "secondary"
+                              : challenge.difficulty.toLowerCase() === "medium"
+                              ? "default"
+                              : "destructive"
+                          }
+                          className="text-xs"
+                        >
+                          {challenge.difficulty}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {Math.floor(challenge.time_limit / 60)}min •{" "}
+                          {Math.round(challenge.success_rate * 100)}% success
+                        </span>
                       </div>
-                    ))}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {(() => {
+                          try {
+                            const tagsArray = JSON.parse(challenge.tags);
+                            return tagsArray.map(
+                              (tag: string, tagIndex: number) => (
+                                <Badge
+                                  key={tagIndex}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              )
+                            );
+                          } catch (error) {
+                            return null;
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/contests/${contestId}/challenges/${challenge.id}`}
+                    >
+                      Solve Problem
+                    </Link>
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Code Editor */}
-          <div className="lg:col-span-3">
-            <CodeEditor
-              testCases={selectedChallenge.testCases}
-              onSubmit={handleSubmit}
-              initialLanguage="python"
-            />
-          </div>
-        </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

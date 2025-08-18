@@ -8,15 +8,17 @@ import { mockChallenges } from "@/lib/mock-data";
 import { Clock, Play, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { use } from "react";
 
 interface ChallengePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function ChallengePage({ params }: ChallengePageProps) {
-  const challenge = mockChallenges.find((c) => c.id === params.id);
+  const resolvedParams = use(params);
+  const challenge = mockChallenges.find((c) => c.id === resolvedParams.id);
 
   if (!challenge) {
     notFound();
@@ -51,31 +53,20 @@ export default function ChallengePage({ params }: ChallengePageProps) {
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        try {
-                          const tagsArray = JSON.parse(challenge.tags);
-                          return tagsArray.map((tag: string) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ));
-                        } catch (error) {
-                          return (
-                            <span className="text-muted-foreground text-xs">
-                              No tags
-                            </span>
-                          );
-                        }
-                      })()}
+                      {challenge.tags.map((tag: string, index: number) => (
+                        <Badge
+                          key={`${tag}-${index}`}
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button asChild>
-                      <Link href={`/challenges/${challenge.id}/solve`}>
+                      <Link href={`/challenges/${resolvedParams.id}/solve`}>
                         <Play className="h-4 w-4 mr-2" />
                         Solve
                       </Link>

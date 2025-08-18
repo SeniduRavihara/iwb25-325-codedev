@@ -328,20 +328,25 @@ export default function ContestsPage() {
                     )}
                     {contest.status === "upcoming" &&
                       (registrationStatus[contest.id] ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleUnregisterFromContest(contest.id)
-                          }
-                          disabled={registeringContest === contest.id}
-                        >
-                          {registeringContest === contest.id ? (
-                            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            "Unregister"
-                          )}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleUnregisterFromContest(contest.id)
+                            }
+                            disabled={registeringContest === contest.id}
+                          >
+                            {registeringContest === contest.id ? (
+                              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              "Unregister"
+                            )}
+                          </Button>
+                          <Button size="sm" asChild>
+                            <Link href={`/contests/${contest.id}`}>Join</Link>
+                          </Button>
+                        </div>
                       ) : (
                         <Button
                           size="sm"

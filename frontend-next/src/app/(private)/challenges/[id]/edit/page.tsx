@@ -22,15 +22,17 @@ import { Plus, Save, X } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { useState } from "react";
+import { use } from "react";
 
 interface EditChallengePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EditChallengePage({ params }: EditChallengePageProps) {
-  const challenge = mockChallenges.find((c) => c.id === params.id);
+  const resolvedParams = use(params);
+  const challenge = mockChallenges.find((c) => c.id === resolvedParams.id);
 
   if (!challenge) {
     notFound();
@@ -112,7 +114,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href={`/challenges/${params.id}`}>Cancel</Link>
+            <Link href={`/challenges/${resolvedParams.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -343,7 +345,7 @@ export default function EditChallengePage({ params }: EditChallengePageProps) {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href={`/challenges/${params.id}`}>Cancel</Link>
+              <Link href={`/challenges/${resolvedParams.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />

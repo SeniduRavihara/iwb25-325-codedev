@@ -260,6 +260,12 @@ public function createChallenge(models:ChallengeCreate challengeData, int author
 
 // Create new contest
 public function createContest(models:ContestCreate contestData, int createdBy) returns sql:ExecutionResult|error {
+    // Log the times being inserted for debugging
+    io:println("DEBUG: Creating contest with times:");
+    io:println("  Start time: " + contestData.start_time);
+    io:println("  End time: " + contestData.end_time);
+    io:println("  Registration deadline: " + contestData.registration_deadline);
+
     return dbClient->execute(`
         INSERT INTO contests (title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at) 
         VALUES (${contestData.title}, ${contestData.description}, ${contestData.start_time}, ${contestData.end_time}, ${contestData.duration}, 'upcoming', ${contestData.max_participants}, ${contestData.prizes}, ${contestData.rules}, ${createdBy}, ${contestData.registration_deadline}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -492,4 +498,78 @@ public function isUserRegisteredForContest(int contestId, int userId) returns bo
     }
 
     return result.value.count > 0;
+}
+
+// Update contest status based on current time
+public function updateContestStatus() returns error? {
+    time:Utc currentTime = time:utcNow();
+    string currentTimeStr = time:utcToString(currentTime);
+
+    // Update contests that should be active
+    sql:ExecutionResult|error activeResult = dbClient->execute(`
+        UPDATE contests 
+        SET status = 'active' 
+        WHERE status = 'upcoming' 
+        AND datetime(start_time) <= datetime('${currentTimeStr}')
+        AND datetime(end_time) > datetime('${currentTimeStr}')
+    `);
+
+    if activeResult is error {
+        return error("Failed to update active contests: " + activeResult.message());
+    }
+
+    // Update contests that should be completed
+    sql:ExecutionResult|error completedResult = dbClient->execute(`
+        UPDATE contests 
+        SET status = 'completed' 
+        WHERE status IN ('upcoming', 'active') 
+        AND datetime(end_time) <= datetime('${currentTimeStr}')
+    `);
+
+    if completedResult is error {
+        return error("Failed to update completed contests: " + completedResult.message());
+    }
+
+    return;
+}
+
+// Get specific contest status
+public function getContestStatus(int contestId) returns string|error {
+    stream<record {|string status;|}, sql:Error?> resultStream =
+        dbClient->query(`SELECT status FROM contests WHERE id = ${contestId}`);
+
+    record {|record {|string status;|} value;|}|error? result = resultStream.next();
+    error? closeResult = resultStream.close();
+
+    if closeResult is error {
+        return closeResult;
+    }
+
+    if result is () || result is error {
+        return error("Contest not found");
+    }
+
+    return result.value.status;
+}
+
+// Update specific contest status to active
+public function updateContestToActive(int contestId) returns error? {
+    time:Utc currentTime = time:utcNow();
+    string currentTimeStr = time:utcToString(currentTime);
+
+    // Update specific contest to active if it should be active
+    sql:ExecutionResult|error activeResult = dbClient->execute(`
+        UPDATE contests 
+        SET status = 'active' 
+        WHERE id = ${contestId}
+        AND status = 'upcoming' 
+        AND datetime(start_time) <= datetime('${currentTimeStr}')
+        AND datetime(end_time) > datetime('${currentTimeStr}')
+    `);
+
+    if activeResult is error {
+        return error("Failed to update contest to active: " + activeResult.message());
+    }
+
+    return;
 }

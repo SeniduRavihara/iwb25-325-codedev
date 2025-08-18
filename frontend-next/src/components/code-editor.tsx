@@ -15,7 +15,7 @@ import { apiService, type CodeExecutionResponse } from "@/lib/api";
 import type { TestCase } from "@/lib/mock-data";
 import { AlertCircle, Download, Play, RotateCcw, Upload } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Dynamically import Monaco Editor to avoid SSR issues
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -68,6 +68,16 @@ export function CodeEditor({
   initialCode,
   initialLanguage = "python",
 }: CodeEditorProps) {
+  // Only log on mount or when testCases change significantly
+  useEffect(() => {
+    console.log("🎨 CodeEditor component received props:", {
+      testCasesCount: testCases?.length || 0,
+      testCases: testCases,
+      initialLanguage,
+      hasOnSubmit: !!onSubmit,
+    });
+  }, [testCases?.length]); // Only log when testCases count changes
+
   const [code, setCode] = useState(
     initialCode ||
       languageTemplates[initialLanguage as keyof typeof languageTemplates]
@@ -80,6 +90,16 @@ export function CodeEditor({
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
+
+  // Log when testCases prop changes
+  useEffect(() => {
+    if (testCases && testCases.length > 0) {
+      console.log("🔄 CodeEditor testCases prop changed:", {
+        count: testCases.length,
+        testCases: testCases,
+      });
+    }
+  }, [testCases]);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
@@ -116,11 +136,18 @@ export function CodeEditor({
   };
 
   const runCode = async () => {
+    console.log("🚀 runCode called with:");
+    console.log("📝 Code length:", code.length);
+    console.log("🔤 Language:", language);
+    console.log("🧪 Available test cases:", testCases?.length || 0);
+
     if (!code.trim()) {
+      console.log("❌ No code to run");
       setError("Please enter some code to run");
       return;
     }
 
+    console.log("🔄 Starting code execution...");
     setIsRunning(true);
     setShowResults(true);
     setError(null);
@@ -128,13 +155,17 @@ export function CodeEditor({
     setTestResults([]);
 
     try {
+      console.log("📡 Calling API to execute code...");
       // First, run the code to see if it compiles/executes
       const response = await apiService.executeCode({
         code: code.trim(),
         language: language,
       });
 
+      console.log("📊 Code execution response:", response);
+
       if (response.success && response.data) {
+        console.log("✅ Code execution successful:", response.data);
         setExecutionResult(response.data);
 
         // Now run against test cases
@@ -151,25 +182,47 @@ export function CodeEditor({
   };
 
   const runTestCases = async () => {
+    console.log("🧪 runTestCases called");
+    console.log("📊 Total test cases:", testCases?.length || 0);
+
     const visibleTestCases = testCases.filter((tc) => !tc.isHidden);
+    console.log("👁️ Visible test cases:", visibleTestCases.length);
+
     const results: TestResult[] = [];
 
     for (let i = 0; i < visibleTestCases.length; i++) {
       const testCase = visibleTestCases[i];
+      console.log(`🧪 Running test case ${i + 1}:`, {
+        input: testCase.input,
+        expected: testCase.expectedOutput,
+        hidden: testCase.isHidden,
+      });
 
       try {
         // Create test code that includes the input
         const testCode = createTestCode(code, testCase.input, language);
+        console.log(
+          `📝 Test code for case ${i + 1}:`,
+          testCode.substring(0, 100) + "..."
+        );
 
         const response = await apiService.executeCode({
           code: testCode,
           language: language,
         });
 
+        console.log(`📊 Test case ${i + 1} response:`, response);
+
         if (response.success && response.data) {
           const actualOutput = response.data.output?.trim() || "";
           const expectedOutput = testCase.expectedOutput.trim();
           const status = actualOutput === expectedOutput ? "passed" : "failed";
+
+          console.log(`✅ Test case ${i + 1} result:`, {
+            actual: actualOutput,
+            expected: expectedOutput,
+            status: status,
+          });
 
           results.push({
             testCase,
@@ -179,6 +232,7 @@ export function CodeEditor({
             executionTime: response.data.executionTime?.milliseconds || 0,
           });
         } else {
+          console.log(`❌ Test case ${i + 1} failed:`, response.message);
           results.push({
             testCase,
             index: i + 1,
@@ -189,6 +243,7 @@ export function CodeEditor({
           });
         }
       } catch (err) {
+        console.log(`❌ Test case ${i + 1} error:`, err);
         results.push({
           testCase,
           index: i + 1,
@@ -200,6 +255,7 @@ export function CodeEditor({
       }
     }
 
+    console.log("🏁 All test cases completed:", results);
     setTestResults(results);
   };
 
@@ -215,6 +271,10 @@ export function CodeEditor({
   };
 
   const submitCode = () => {
+    console.log("📤 submitCode called");
+    console.log("📝 Submitting code:", code.substring(0, 100) + "...");
+    console.log("🔤 Language:", language);
+    console.log("🧪 Test cases available:", testCases?.length || 0);
     onSubmit(code, language);
   };
 

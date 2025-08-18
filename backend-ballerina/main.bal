@@ -513,6 +513,12 @@ service / on new http:Listener(serverPort) {
 
     // Get all contests (public)
     resource function get contests(http:Caller caller, http:Request req) returns error? {
+        // Update contest status based on current time
+        error? updateResult = database:updateContestStatus();
+        if updateResult is error {
+            io:println("Warning: Failed to update contest status: " + updateResult.message());
+        }
+
         models:Contest[]|error contests = database:getAllContests();
 
         if contests is error {
@@ -599,6 +605,30 @@ service / on new http:Listener(serverPort) {
             }
         }
 
+        models:TestCase[]|error testCases = database:getTestCasesByChallengeId(challengeId);
+
+        if testCases is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch test cases: " + testCases.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": testCases
+        });
+        check caller->respond(response);
+    }
+
+    // Get test cases for a specific challenge (public)
+    resource function get challenges/[int challengeId]/testcases(http:Caller caller, http:Request req) returns error? {
         models:TestCase[]|error testCases = database:getTestCasesByChallengeId(challengeId);
 
         if testCases is error {
@@ -1196,6 +1226,115 @@ service / on new http:Listener(serverPort) {
                 "isRegistered": isRegistered
             }
         });
+        check caller->respond(response);
+    }
+
+    // Update contest status (admin only)
+    resource function post contests_update_status(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Update contest status
+        error? updateResult = database:updateContestStatus();
+        if updateResult is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to update contest status: " + updateResult.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Contest status updated successfully"
+        });
+        check caller->respond(response);
+    }
+
+    // Update specific contest status (public - for timer-triggered updates)
+    resource function post contests/[int contestId]/update_status(http:Caller caller, http:Request req) returns error? {
+        // Update specific contest to active
+        error? updateResult = database:updateContestToActive(contestId);
+        if updateResult is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to update contest status: " + updateResult.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Contest status updated successfully"
+        });
+        check caller->respond(response);
+    }
+
+    // Debug endpoint to check contest status
+    resource function get contests/[int contestId]/status(http:Caller caller, http:Request req) returns error? {
+        string|error status = database:getContestStatus(contestId);
+
+        http:Response response = new;
+        if status is error {
+            response.statusCode = 404;
+            response.setJsonPayload({
+                "success": false,
+                "message": status.message()
+            });
+        } else {
+            response.statusCode = 200;
+            response.setJsonPayload({
+                "success": true,
+                "data": {
+                    "contestId": contestId,
+                    "status": status
+                }
+            });
+        }
         check caller->respond(response);
     }
 }

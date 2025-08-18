@@ -15,16 +15,17 @@ import { mockChallenges, mockContests } from "@/lib/mock-data";
 import { Clock, Save, X } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { useState } from "react";
+import { use, useState } from "react";
 
 interface EditContestPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function EditContestPage({ params }: EditContestPageProps) {
-  const contest = mockContests.find((c) => c.id === params.id);
+  const resolvedParams = use(params);
+  const contest = mockContests.find((c) => c.id === resolvedParams.id);
 
   if (!contest) {
     notFound();
@@ -100,7 +101,7 @@ export default function EditContestPage({ params }: EditContestPageProps) {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href={`/contests/${params.id}`}>Cancel</Link>
+            <Link href={`/contests/${resolvedParams.id}`}>Cancel</Link>
           </Button>
         </div>
 
@@ -343,7 +344,7 @@ export default function EditContestPage({ params }: EditContestPageProps) {
 
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href={`/contests/${params.id}`}>Cancel</Link>
+              <Link href={`/contests/${resolvedParams.id}`}>Cancel</Link>
             </Button>
             <Button type="submit">
               <Save className="h-4 w-4 mr-2" />

@@ -158,24 +158,35 @@ export default function CreateContestPage() {
       }
 
       // Calculate end time based on start time and duration
+      // Fix timezone issue by preserving local time
       const startDate = new Date(formData.startTime);
       const endDate = new Date(
         startDate.getTime() + formData.duration * 60 * 1000
       );
 
+      // Convert to UTC while preserving the intended local time
+      const startTimeUTC = new Date(
+        startDate.getTime() - startDate.getTimezoneOffset() * 60000
+      ).toISOString();
+      const endTimeUTC = new Date(
+        endDate.getTime() - endDate.getTimezoneOffset() * 60000
+      ).toISOString();
+      const registrationDeadlineUTC = new Date(
+        new Date(formData.registrationDeadline).getTime() -
+          new Date(formData.registrationDeadline).getTimezoneOffset() * 60000
+      ).toISOString();
+
       // Prepare contest data for API
       const contestData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
-        start_time: startDate.toISOString(),
-        end_time: endDate.toISOString(),
+        start_time: startTimeUTC,
+        end_time: endTimeUTC,
         duration: formData.duration,
         max_participants: formData.maxParticipants,
         prizes: JSON.stringify(formData.prizes), // Convert array to JSON string
         rules: formData.rules.trim(),
-        registration_deadline: new Date(
-          formData.registrationDeadline
-        ).toISOString(),
+        registration_deadline: registrationDeadlineUTC,
       };
 
       // Create contest via API

@@ -385,6 +385,34 @@ class ApiService {
       }
     );
   }
+
+  async updateContestStatus(contestId: number): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/update_status`, {
+      method: "POST",
+    });
+  }
+
+  async getContestStatus(
+    contestId: number
+  ): Promise<ApiResponse<{ data: { contestId: number; status: string } }>> {
+    return this.request<{ data: { contestId: number; status: string } }>(
+      `/contests/${contestId}/status`,
+      {
+        method: "GET",
+      }
+    );
+  }
+
+  async getTestCases(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: TestCase[] }>> {
+    return this.request<{ data: TestCase[] }>(
+      `/challenges/${challengeId}/testcases`,
+      {
+        method: "GET",
+      }
+    );
+  }
 }
 
 export const apiService = new ApiService();
