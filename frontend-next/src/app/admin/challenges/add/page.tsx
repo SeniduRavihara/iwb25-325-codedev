@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiService } from "@/lib/api";
 import type { TestCase } from "@/lib/mock-data";
 import { Plus, Save, X } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +25,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function AddChallengePage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
 
   // Redirect to login if not authenticated, or to home if not admin
@@ -97,10 +98,65 @@ export default function AddChallengePage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement challenge creation logic
-    console.log("Creating challenge:", { ...formData, testCases });
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Check authentication
+      if (!token) {
+        setSubmitError("Authentication required. Please log in again.");
+        return;
+      }
+
+      // Validate required fields
+      if (!formData.title.trim()) {
+        setSubmitError("Title is required");
+        return;
+      }
+      if (!formData.description.trim()) {
+        setSubmitError("Description is required");
+        return;
+      }
+      if (!formData.difficulty) {
+        setSubmitError("Difficulty is required");
+        return;
+      }
+      if (formData.tags.length === 0) {
+        setSubmitError("At least one tag is required");
+        return;
+      }
+
+      // Prepare challenge data for API
+      const challengeData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        difficulty: formData.difficulty,
+        tags: JSON.stringify(formData.tags), // Convert array to JSON string
+        time_limit: formData.timeLimit * 60, // Convert minutes to seconds
+        memory_limit: formData.memoryLimit,
+      };
+
+      // Create challenge via API
+      const response = await apiService.createChallenge(challengeData, token);
+
+      if (response.success) {
+        // TODO: Create test cases for the challenge
+        // For now, just redirect to challenges list with success message
+        router.push("/admin/challenges?success=true");
+      } else {
+        setSubmitError(response.message || "Failed to create challenge");
+      }
+    } catch (err) {
+      console.error("Error creating challenge:", err);
+      setSubmitError("Network error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Show loading if not authenticated or not admin
@@ -355,11 +411,18 @@ export default function AddChallengePage() {
             </CardContent>
           </Card>
 
+          {/* Error Display */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-red-800 text-sm">{submitError}</div>
+            </div>
+          )}
+
           {/* Submit Button */}
           <div className="flex justify-end">
-            <Button type="submit" size="lg">
+            <Button type="submit" size="lg" disabled={isSubmitting}>
               <Save className="h-4 w-4 mr-2" />
-              Create Challenge
+              {isSubmitting ? "Creating..." : "Create Challenge"}
             </Button>
           </div>
         </form>
