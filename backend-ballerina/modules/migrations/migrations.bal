@@ -1,3 +1,6 @@
+import backend_ballerina.database;
+import backend_ballerina.seeders;
+
 import ballerina/io;
 import ballerina/sql;
 import ballerinax/java.jdbc;
@@ -231,3 +234,35 @@ public MigrationInfo[] MIGRATIONS = [
         execute: createSubmissionsTable
     }
 ];
+
+// CLI Helper Functions
+
+// Run database migrations
+public function runMigrations() returns error? {
+    io:println("🔄 Running database migrations...");
+    MigrationManager migrationManager = new (database:getDbClient());
+    check migrationManager.migrate();
+    return;
+}
+
+// Rollback last migration
+public function rollbackMigration() returns error? {
+    io:println("⏪ Rolling back last migration...");
+    MigrationManager migrationManager = new (database:getDbClient());
+    check migrationManager.rollbackMigration();
+    return;
+}
+
+// Run database seeders
+public function runSeeders() returns error? {
+    seeders:DatabaseSeeder seeder = new (database:getDbClient());
+    check seeder.seed();
+    return;
+}
+
+// Fresh database (migrate + seed)
+public function freshDatabase() returns error? {
+    seeders:DatabaseSeeder seeder = new (database:getDbClient());
+    check seeder.fresh();
+    return;
+}

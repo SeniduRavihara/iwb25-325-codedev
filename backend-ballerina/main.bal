@@ -1,13 +1,12 @@
+import backend_ballerina.analysis;
 import backend_ballerina.auth;
 import backend_ballerina.database;
 import backend_ballerina.migrations;
 import backend_ballerina.models;
-import backend_ballerina.seeders;
 
 import ballerina/http;
 import ballerina/io;
 import ballerina/os;
-import ballerina/regex;
 import ballerina/sql;
 import ballerina/time;
 
@@ -19,16 +18,16 @@ public function main(string... args) returns error? {
     if args.length() > 0 {
         match args[0] {
             "migrate" => {
-                return runMigrations();
+                return migrations:runMigrations();
             }
             "migrate:rollback" => {
-                return rollbackMigration();
+                return migrations:rollbackMigration();
             }
             "seed" => {
-                return runSeeders();
+                return migrations:runSeeders();
             }
             "db:fresh" => {
-                return freshDatabase();
+                return migrations:freshDatabase();
             }
             _ => {
                 io:println("Unknown command: " + args[0]);
@@ -40,32 +39,6 @@ public function main(string... args) returns error? {
 
     // Default: start server
     return startServer();
-}
-
-function runMigrations() returns error? {
-    io:println("🔄 Running database migrations...");
-    migrations:MigrationManager migrationManager = new (database:getDbClient());
-    check migrationManager.migrate();
-    return;
-}
-
-function rollbackMigration() returns error? {
-    io:println("⏪ Rolling back last migration...");
-    migrations:MigrationManager migrationManager = new (database:getDbClient());
-    check migrationManager.rollbackMigration();
-    return;
-}
-
-function runSeeders() returns error? {
-    seeders:DatabaseSeeder seeder = new (database:getDbClient());
-    check seeder.seed();
-    return;
-}
-
-function freshDatabase() returns error? {
-    seeders:DatabaseSeeder seeder = new (database:getDbClient());
-    check seeder.fresh();
-    return;
 }
 
 function startServer() returns error? {
@@ -349,7 +322,7 @@ service / on new http:Listener(serverPort) {
                         "processLimit": 50,
                         "networkAccess": false
                     },
-                    "analysis": analyzeCode(code, lang),
+                    "analysis": analysis:analyzeCode(code, lang),
                     "exitCode": exitCode,
                     "timestamp": time:utcToString(endTime)
                 };
@@ -363,7 +336,7 @@ service / on new http:Listener(serverPort) {
                         "milliseconds": executionTimeMs,
                         "seconds": executionTimeSeconds
                     },
-                    "analysis": analyzeCode(code, lang),
+                    "analysis": analysis:analyzeCode(code, lang),
                     "exitCode": exitCode,
                     "timestamp": time:utcToString(endTime)
                 };
@@ -541,56 +514,6 @@ service / on new http:Listener(serverPort) {
         });
         check caller->respond(response);
     }
-
-    // --------------------------------------
-    // === DEBUG ENDPOINTS ===
-
-    // Add these endpoints
-
-    resource function get contests/debug/specific(http:Caller caller, http:Request req) returns error? {
-        record {}[]|error rawData = database:debugSpecificContests();
-
-        http:Response response = new;
-        if rawData is error {
-            response.statusCode = 500;
-            response.setJsonPayload({
-                "success": false,
-                "message": rawData.message(),
-                "error_details": rawData.toString()
-            });
-        } else {
-            response.statusCode = 200;
-            response.setJsonPayload({
-                "success": true,
-                "data": rawData.toJson(),
-                "count": rawData.length()
-            });
-        }
-        check caller->respond(response);
-    }
-
-    resource function get contests/debug/simple(http:Caller caller, http:Request req) returns error? {
-        record {|int id; string title;|}[]|error simpleData = database:debugContestsSimple();
-
-        http:Response response = new;
-        if simpleData is error {
-            response.statusCode = 500;
-            response.setJsonPayload({
-                "success": false,
-                "message": simpleData.message()
-            });
-        } else {
-            response.statusCode = 200;
-            response.setJsonPayload({
-                "success": true,
-                "data": simpleData.toJson(),
-                "count": simpleData.length()
-            });
-        }
-        check caller->respond(response);
-    }
-
-    // ---------------------------------------
 
     // Get test cases for a challenge (public - only visible test cases)
     resource function get testcases(http:Caller caller, http:Request req) returns error? {
@@ -1340,182 +1263,4 @@ service / on new http:Listener(serverPort) {
 }
 
 // Function to analyze code complexity
-function analyzeCode(string code, string language) returns json {
-    json analysis = {
-        "linesOfCode": countLines(code),
-        "codeLength": code.length(),
-        "complexity": "unknown"
-    };
 
-    if language == "python" {
-        json pythonAnalysis = analyzePythonComplexity(code);
-        json patterns = analyzePythonPatterns(code);
-
-        analysis = {
-            "linesOfCode": countLines(code),
-            "codeLength": code.length(),
-            "estimatedComplexity": pythonAnalysis,
-            "patterns": patterns
-        };
-    } else if language == "java" {
-        json javaAnalysis = analyzeJavaComplexity(code);
-        json patterns = analyzeJavaPatterns(code);
-
-        analysis = {
-            "linesOfCode": countLines(code),
-            "codeLength": code.length(),
-            "estimatedComplexity": javaAnalysis,
-            "patterns": patterns
-        };
-    } else if language == "ballerina" {
-        json balAnalysis = analyzeBallerinaComplexity(code);
-        analysis = {
-            "linesOfCode": countLines(code),
-            "codeLength": code.length(),
-            "estimatedComplexity": balAnalysis,
-            "patterns": []
-        };
-    }
-
-    return analysis;
-}
-
-function countLines(string code) returns int {
-    string[] lines = regex:split(code, "\n");
-    // Count non-empty lines
-    int nonEmptyLines = 0;
-    foreach string line in lines {
-        if line.trim().length() > 0 {
-            nonEmptyLines += 1;
-        }
-    }
-    return nonEmptyLines;
-}
-
-function analyzePythonComplexity(string code) returns json {
-    string timeComplexity = "O(?)";
-    string spaceComplexity = "O(?)";
-    string[] patterns = [];
-
-    // Basic pattern detection
-    if code.includes("for") && regex:matches(code, ".*for.*for.*") {
-        patterns.push("nested_loops");
-        timeComplexity = "O(n²) - potential nested loops detected";
-    } else if code.includes("for") || code.includes("while") {
-        patterns.push("single_loop");
-        timeComplexity = "O(n) - single loop detected";
-    } else {
-        timeComplexity = "O(1) - no loops detected";
-    }
-
-    if code.includes("[]") || code.includes("list") || code.includes("dict") {
-        patterns.push("data_structures");
-        spaceComplexity = "O(n) - data structures detected";
-    } else {
-        spaceComplexity = "O(1) - minimal space usage";
-    }
-
-    return {
-        "timeComplexity": timeComplexity,
-        "spaceComplexity": spaceComplexity,
-        "detectedPatterns": <json>patterns
-    };
-}
-
-function analyzeJavaComplexity(string code) returns json {
-    string timeComplexity = "O(?)";
-    string spaceComplexity = "O(?)";
-    string[] patterns = [];
-
-    // Basic pattern detection for Java
-    if code.includes("for") && regex:matches(code, ".*for.*for.*") {
-        patterns.push("nested_loops");
-        timeComplexity = "O(n²) - potential nested loops detected";
-    } else if code.includes("for") || code.includes("while") {
-        patterns.push("single_loop");
-        timeComplexity = "O(n) - single loop detected";
-    } else {
-        timeComplexity = "O(1) - no loops detected";
-    }
-
-    if code.includes("ArrayList") || code.includes("HashMap") || code.includes("[]") {
-        patterns.push("data_structures");
-        spaceComplexity = "O(n) - data structures detected";
-    } else {
-        spaceComplexity = "O(1) - minimal space usage";
-    }
-
-    return {
-        "timeComplexity": timeComplexity,
-        "spaceComplexity": spaceComplexity,
-        "detectedPatterns": <json>patterns
-    };
-}
-
-function analyzePythonPatterns(string code) returns json {
-    string[] patterns = [];
-
-    if code.includes("def ") {
-        patterns.push("function_definition");
-    }
-    if code.includes("class ") {
-        patterns.push("class_definition");
-    }
-    if code.includes("import ") {
-        patterns.push("imports");
-    }
-    if code.includes("try:") || code.includes("except:") {
-        patterns.push("error_handling");
-    }
-    if code.includes("lambda ") {
-        patterns.push("lambda_functions");
-    }
-
-    return <json>patterns;
-}
-
-function analyzeJavaPatterns(string code) returns json {
-    string[] patterns = [];
-
-    if code.includes("public static void main") {
-        patterns.push("main_method");
-    }
-    if code.includes("class ") {
-        patterns.push("class_definition");
-    }
-    if code.includes("import ") {
-        patterns.push("imports");
-    }
-    if code.includes("try {") || code.includes("catch") {
-        patterns.push("error_handling");
-    }
-    if code.includes("interface ") {
-        patterns.push("interface_definition");
-    }
-
-    return <json>patterns;
-}
-
-function analyzeBallerinaComplexity(string code) returns json {
-    string timeComplexity = "O(?)";
-    string spaceComplexity = "O(?)";
-    string[] patterns = [];
-
-    if code.includes("foreach") && regex:matches(code, ".*foreach.*foreach.*") {
-        patterns.push("nested_loops");
-        timeComplexity = "O(n²) - potential nested loops detected";
-    } else if code.includes("foreach") || code.includes("while") {
-        patterns.push("single_loop");
-        timeComplexity = "O(n) - single loop detected";
-    } else {
-        timeComplexity = "O(1) - no loops detected";
-    }
-
-    spaceComplexity = "O(?)";
-
-    return {
-        "timeComplexity": timeComplexity,
-        "spaceComplexity": spaceComplexity,
-        "detectedPatterns": <json>patterns
-    };
-}

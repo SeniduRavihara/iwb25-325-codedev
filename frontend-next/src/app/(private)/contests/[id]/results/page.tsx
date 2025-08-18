@@ -232,7 +232,7 @@ export default function ContestResultsPage({
               <p className="text-muted-foreground">{contest.description}</p>
             </div>
             <Button variant="outline" asChild>
-              <Link href={`/contests/${contestId}`}>← Back to Contest</Link>
+              <Link href={`/contests/`}>← Back to Contests</Link>
             </Button>
           </div>
         </div>

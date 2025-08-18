@@ -110,43 +110,59 @@ export default function ContestDetailPage({
       const startTime = new Date(contest.start_time).getTime();
       const timeLeft = startTime - now;
 
-      if (timeLeft <= 0 && !hasRedirected) {
-        // Contest has started, update status and redirect to participate page
+      if (timeLeft <= 0 && !hasRedirected && contest.status === "upcoming") {
+        // Contest has started, update status from "upcoming" to "active" and redirect to participate page
         setHasRedirected(true);
         setIsUpdatingStatus(true);
 
+        console.log(
+          `Contest ${contestId} timer expired. Updating status from "upcoming" to "active"...`
+        );
+
         // Update contest status to active
         try {
-          // Check current status
+          // Check current status before updating
           const currentStatus = await apiService.getContestStatus(contestId);
           console.log(
             "Current contest status:",
             currentStatus.data?.data?.status
           );
 
-          await apiService.updateContestStatus(contestId);
-          console.log("Contest status update request sent");
-
-          // Check updated status
-          const updatedStatus = await apiService.getContestStatus(contestId);
-          console.log(
-            "Updated contest status:",
-            updatedStatus.data?.data?.status
-          );
-
-          // Refresh contest data to get updated status
-          const refreshResponse = await apiService.getContests();
-          if (
-            refreshResponse.success &&
-            refreshResponse.data &&
-            refreshResponse.data.data
-          ) {
-            const refreshedContest = refreshResponse.data.data.find(
-              (c: Contest) => c.id === contestId
+          // Only update if status is still "upcoming"
+          if (currentStatus.data?.data?.status === "upcoming") {
+            await apiService.updateContestStatus(contestId);
+            console.log(
+              "Contest status update request sent - changing from 'upcoming' to 'active'"
             );
-            if (refreshedContest) {
-              setContest(refreshedContest);
+
+            // Verify the status was updated
+            const updatedStatus = await apiService.getContestStatus(contestId);
+            console.log(
+              "Updated contest status:",
+              updatedStatus.data?.data?.status
+            );
+
+            // Refresh contest data to get updated status
+            const refreshResponse = await apiService.getContests();
+            if (
+              refreshResponse.success &&
+              refreshResponse.data &&
+              refreshResponse.data.data
+            ) {
+              const refreshedContest = refreshResponse.data.data.find(
+                (c: Contest) => c.id === contestId
+              );
+              if (refreshedContest) {
+                setContest(refreshedContest);
+                console.log(
+                  `Contest ${contestId} status updated successfully to: ${refreshedContest.status}`
+                );
+              }
             }
+          } else {
+            console.log(
+              `Contest ${contestId} status already updated by another user to: ${currentStatus.data?.data?.status}`
+            );
           }
         } catch (error) {
           console.error("Failed to update contest status:", error);
@@ -154,7 +170,7 @@ export default function ContestDetailPage({
           setIsUpdatingStatus(false);
         }
 
-        // Small delay to ensure status update is processed
+        // Small delay to ensure status update is processed, then redirect to participate page
         setTimeout(() => {
           router.push(`/contests/${contestId}/participate`);
         }, 1000);
@@ -388,8 +404,8 @@ export default function ContestDetailPage({
                   timeUntilStart.minutes === 0 &&
                   timeUntilStart.seconds === 0
                     ? isUpdatingStatus
-                      ? "Updating contest status to active..."
-                      : "The contest should have started. Please check the contest status or contact an administrator."
+                      ? "🚀 Activating contest... You'll be redirected to participate!"
+                      : "Contest should start now. Activating contest..."
                     : "The contest will automatically start when the timer reaches zero."}
                 </p>
                 {isUpdatingStatus && (
