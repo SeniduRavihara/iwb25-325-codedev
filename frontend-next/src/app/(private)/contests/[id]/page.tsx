@@ -15,15 +15,14 @@ import { apiService, type Contest } from "@/lib/api";
 import { Calendar, Clock, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 
 export default function ContestDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const router = useRouter();
   const [contest, setContest] = useState<Contest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,13 +36,14 @@ export default function ContestDetailPage({
   } | null>(null);
   const [hasRedirected, setHasRedirected] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [hasRedirectedToResults, setHasRedirectedToResults] = useState(false);
 
   const resolvedParams = use(params);
   const contestId = parseInt(resolvedParams.id);
 
   useEffect(() => {
     const fetchContestDetails = async () => {
-      if (!isAuthenticated) {
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -57,6 +57,16 @@ export default function ContestDetailPage({
           );
           if (foundContest) {
             setContest(foundContest);
+
+            // Check if contest has already ended and redirect to results
+            const now = new Date().getTime();
+            const endTime = new Date(foundContest.end_time).getTime();
+
+            if (now > endTime && !hasRedirectedToResults) {
+              setHasRedirectedToResults(true);
+              router.push(`/contests/${contestId}/results`);
+              return;
+            }
           } else {
             setError("Contest not found");
           }
@@ -72,7 +82,9 @@ export default function ContestDetailPage({
               token
             );
             setIsRegistered(
-              statusResponse.success && statusResponse.data?.data?.isRegistered
+              (statusResponse.success &&
+                statusResponse.data?.data?.isRegistered) ||
+                false
             );
           } catch (err) {
             console.error("Error checking registration status:", err);
@@ -87,7 +99,7 @@ export default function ContestDetailPage({
     };
 
     fetchContestDetails();
-  }, [contestId, isAuthenticated, token, router]);
+  }, [contestId, isAuthenticated, token, router, hasRedirectedToResults]);
 
   // Timer effect
   useEffect(() => {
@@ -171,7 +183,7 @@ export default function ContestDetailPage({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [contest, contestId, router]);
+  }, [contest, contestId, router, hasRedirected]);
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -312,7 +324,7 @@ export default function ContestDetailPage({
                         return prizesArray.length > 0
                           ? `${prizesArray.length} prize(s)`
                           : "No prizes";
-                      } catch (error) {
+                      } catch {
                         return "No prizes";
                       }
                     })()}

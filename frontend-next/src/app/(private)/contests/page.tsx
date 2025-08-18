@@ -41,7 +41,7 @@ export default function ContestsPage() {
   // Fetch contests from API and check registration status
   useEffect(() => {
     const fetchContests = async () => {
-      if (!isAuthenticated) {
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -156,6 +156,12 @@ export default function ContestsPage() {
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const isContestFinished = (contest: Contest) => {
+    const now = new Date().getTime();
+    const endTime = new Date(contest.end_time).getTime();
+    return now > endTime;
   };
 
   const handleRegisterForContest = async (contestId: number) => {
@@ -301,17 +307,28 @@ export default function ContestsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-xl">
-                        <Link
+                        {/* <Link
                           href={`/contests/${contest.id}`}
                           className="hover:text-primary transition-colors"
-                        >
-                          {contest.title}
-                        </Link>
+                        > */}
+                        {contest.title}
+                        {/* </Link> */}
                       </CardTitle>
-                      <Badge variant={getStatusColor(contest.status)}>
-                        {contest.status.charAt(0).toUpperCase() +
-                          contest.status.slice(1)}
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Badge variant={getStatusColor(contest.status)}>
+                          {contest.status.charAt(0).toUpperCase() +
+                            contest.status.slice(1)}
+                        </Badge>
+                        {isContestFinished(contest) &&
+                          contest.status !== "completed" && (
+                            <Badge
+                              variant="secondary"
+                              className="bg-red-100 text-red-800"
+                            >
+                              Finished
+                            </Badge>
+                          )}
+                      </div>
                     </div>
                     <CardDescription className="mb-3">
                       {contest.description}
@@ -326,53 +343,69 @@ export default function ContestsPage() {
                         </Link>
                       </Button>
                     )}
-                    {contest.status === "upcoming" &&
-                      (registrationStatus[contest.id] ? (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleUnregisterFromContest(contest.id)
-                            }
-                            disabled={registeringContest === contest.id}
-                          >
-                            {registeringContest === contest.id ? (
-                              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              "Unregister"
-                            )}
-                          </Button>
-                          <Button size="sm" asChild>
-                            <Link href={`/contests/${contest.id}`}>Join</Link>
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleRegisterForContest(contest.id)}
-                          disabled={registeringContest === contest.id}
-                        >
-                          {registeringContest === contest.id ? (
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            "Register"
-                          )}
-                        </Button>
-                      ))}
-                    {contest.status === "active" && (
-                      <Button size="sm" asChild>
-                        <Link href={`/contests/${contest.id}/participate`}>
-                          Join Now
-                        </Link>
-                      </Button>
-                    )}
-                    {contest.status === "completed" && (
+                    {/* Show "View Results" button if contest is finished (time expired) */}
+                    {isContestFinished(contest) ? (
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/contests/${contest.id}/results`}>
                           View Results
                         </Link>
                       </Button>
+                    ) : (
+                      <>
+                        {/* Show registration/join buttons only if contest is not finished */}
+                        {contest.status === "upcoming" &&
+                          (registrationStatus[contest.id] ? (
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleUnregisterFromContest(contest.id)
+                                }
+                                disabled={registeringContest === contest.id}
+                              >
+                                {registeringContest === contest.id ? (
+                                  <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  "Unregister"
+                                )}
+                              </Button>
+                              <Button size="sm" asChild>
+                                <Link href={`/contests/${contest.id}`}>
+                                  Join
+                                </Link>
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                handleRegisterForContest(contest.id)
+                              }
+                              disabled={registeringContest === contest.id}
+                            >
+                              {registeringContest === contest.id ? (
+                                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                "Register"
+                              )}
+                            </Button>
+                          ))}
+                        {contest.status === "active" && (
+                          <Button size="sm" asChild>
+                            <Link href={`/contests/${contest.id}/participate`}>
+                              Join Now
+                            </Link>
+                          </Button>
+                        )}
+                        {contest.status === "completed" && (
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/contests/${contest.id}/results`}>
+                              View Results
+                            </Link>
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -440,6 +473,7 @@ export default function ContestsPage() {
                               </Badge>
                             )
                           );
+                          // eslint-disable-next-line @typescript-eslint/no-unused-vars
                         } catch (error) {
                           return (
                             <span className="text-muted-foreground text-xs">

@@ -15,15 +15,14 @@ import { apiService, type Challenge, type Contest } from "@/lib/api";
 import { Clock, Code, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 
 export default function ContestParticipatePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [contest, setContest] = useState<Contest | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -35,6 +34,7 @@ export default function ContestParticipatePage({
     seconds: number;
   } | null>(null);
   const [hasRedirectedToResults, setHasRedirectedToResults] = useState(false);
+  const [isContestEnded, setIsContestEnded] = useState(false);
 
   const resolvedParams = use(params);
   const contestId = parseInt(resolvedParams.id);
@@ -56,21 +56,7 @@ export default function ContestParticipatePage({
           if (foundContest) {
             setContest(foundContest);
 
-            // Check if contest is active by checking the time
-            const now = new Date().getTime();
-            const startTime = new Date(foundContest.start_time).getTime();
-            const endTime = new Date(foundContest.end_time).getTime();
-
-            // DISABLED: Time checks to prevent redirects
-            // if (now < startTime) {
-            //   setError("This contest has not started yet");
-            //   return;
-            // }
-
-            // if (now > endTime) {
-            //   setError("This contest has already ended");
-            //   return;
-            // }
+            // Note: Time checks are disabled to allow access
           } else {
             setError("Contest not found");
           }
@@ -108,16 +94,25 @@ export default function ContestParticipatePage({
       const endTime = new Date(contest.end_time).getTime();
       const timeLeft = endTime - now;
 
-      if (timeLeft <= 0 && !hasRedirectedToResults) {
-        // Contest has ended
-        // DISABLED: setHasRedirectedToResults(true);
-        // DISABLED: router.push(`/contests/${contestId}/results`);
-        // return;
+      if (timeLeft <= 0) {
+        setIsContestEnded(true);
+        if (!hasRedirectedToResults) {
+          // Contest has ended - redirect to results page
+          setHasRedirectedToResults(true);
+          router.push(`/contests/${contestId}/results`);
+          return;
+        }
+      } else {
+        setIsContestEnded(false);
       }
 
-      const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+      // Show 0 if time is negative to avoid showing negative values
+      const hours = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
+      const minutes = Math.max(
+        0,
+        Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60))
+      );
+      const seconds = Math.max(0, Math.floor((timeLeft % (1000 * 60)) / 1000));
 
       setTimeRemaining({ hours, minutes, seconds });
     };
@@ -126,24 +121,7 @@ export default function ContestParticipatePage({
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [contest, contestId, router]);
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty.toLowerCase()) {
-      case "easy":
-        return "bg-green-100 text-green-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      case "hard":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
+  }, [contest, contestId, router, hasRedirectedToResults]);
 
   if (loading) {
     return (
@@ -201,34 +179,56 @@ export default function ContestParticipatePage({
         {timeRemaining && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-center">Time Remaining</CardTitle>
+              <CardTitle className="text-center">
+                {isContestEnded ? "Contest Finished" : "Time Remaining"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center">
-                <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">
-                      {timeRemaining.hours.toString().padStart(2, "0")}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Hours</div>
+              {isContestEnded ? (
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-red-500 mb-4">
+                    Contest has ended!
                   </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">
-                      {timeRemaining.minutes.toString().padStart(2, "0")}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Minutes</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-primary">
-                      {timeRemaining.seconds.toString().padStart(2, "0")}
-                    </div>
-                    <div className="text-sm text-muted-foreground">Seconds</div>
-                  </div>
+                  <p className="text-muted-foreground">
+                    You can no longer solve problems for this contest.
+                  </p>
+                  <Button className="mt-4" asChild>
+                    <Link href={`/contests/${contestId}/results`}>
+                      View Results
+                    </Link>
+                  </Button>
                 </div>
-                <p className="text-muted-foreground mt-4">
-                  Complete the challenges before time runs out!
-                </p>
-              </div>
+              ) : (
+                <div className="text-center">
+                  <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary">
+                        {timeRemaining.hours.toString().padStart(2, "0")}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Hours</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary">
+                        {timeRemaining.minutes.toString().padStart(2, "0")}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Minutes
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-primary">
+                        {timeRemaining.seconds.toString().padStart(2, "0")}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Seconds
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-muted-foreground mt-4">
+                    Complete the challenges before time runs out!
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -283,7 +283,7 @@ export default function ContestParticipatePage({
                         return prizesArray.length > 0
                           ? `${prizesArray.length} prize(s)`
                           : "No prizes";
-                      } catch (error) {
+                      } catch {
                         return "No prizes";
                       }
                     })()}
@@ -342,7 +342,9 @@ export default function ContestParticipatePage({
                       <div className="flex flex-wrap gap-1 mt-2">
                         {(() => {
                           try {
-                            const tagsArray = JSON.parse(challenge.tags);
+                            const tagsArray = Array.isArray(challenge.tags)
+                              ? challenge.tags
+                              : JSON.parse(challenge.tags);
                             return tagsArray.map(
                               (tag: string, tagIndex: number) => (
                                 <Badge
@@ -354,7 +356,7 @@ export default function ContestParticipatePage({
                                 </Badge>
                               )
                             );
-                          } catch (error) {
+                          } catch {
                             return null;
                           }
                         })()}
@@ -363,9 +365,13 @@ export default function ContestParticipatePage({
                   </div>
                   <Button variant="outline" size="sm" asChild>
                     <Link
-                      href={`/contests/${contestId}/challenges/${challenge.id}`}
+                      href={
+                        isContestEnded
+                          ? `/contests/${contestId}/results`
+                          : `/contests/${contestId}/challenges/${challenge.id}`
+                      }
                     >
-                      Solve Problem
+                      {isContestEnded ? "View" : "Solve Problem"}
                     </Link>
                   </Button>
                 </div>
