@@ -171,10 +171,10 @@ public class DatabaseSeeder {
             return;
         }
 
-        // Create sample contests
+        // Create sample contests with future dates
         sql:ExecutionResult|error result1 = self.dbClient->execute(`
             INSERT INTO contests (title, description, start_time, end_time, duration, max_participants, prizes, rules, created_by, registration_deadline, participants_count) 
-            VALUES ('Weekly Challenge', 'Test your skills', '2024-01-20T10:00:00Z', '2024-01-20T13:00:00Z', 180, 100, '["Prize"]', 'Rules', 1, '2024-01-20T09:00:00Z', 0)
+            VALUES ('Weekly Challenge', 'Test your skills', '2025-12-20T10:00:00Z', '2025-12-20T13:00:00Z', 180, 100, '["Prize"]', 'Rules', 1, '2025-12-19T23:59:59Z', 0)
         `);
         if result1 is error {
             return error("Failed to seed contest: " + result1.message());
@@ -182,7 +182,7 @@ public class DatabaseSeeder {
 
         sql:ExecutionResult|error result2 = self.dbClient->execute(`
             INSERT INTO contests (title, description, start_time, end_time, duration, max_participants, prizes, rules, created_by, registration_deadline, participants_count) 
-            VALUES ('Advanced Contest', 'Complex problems', '2024-01-18T14:00:00Z', '2024-01-18T18:00:00Z', 240, 50, '["Prize"]', 'Rules', 1, '2024-01-18T13:00:00Z', 0)
+            VALUES ('Advanced Contest', 'Complex problems', '2025-12-25T14:00:00Z', '2025-12-25T18:00:00Z', 240, 50, '["Prize"]', 'Rules', 1, '2025-12-24T23:59:59Z', 0)
         `);
         if result2 is error {
             return error("Failed to seed contest: " + result2.message());
@@ -278,18 +278,8 @@ public class DatabaseSeeder {
 
         io:println("✓ Database cleared");
 
-        // Reset auto-increment for all tables
-        string[] tableNames = ["users", "challenges", "test_cases", "contests", "contest_challenges", "contest_participants", "submissions"];
-        foreach string tableName in tableNames {
-            sql:ExecutionResult|error resetResult = self.dbClient->execute(`
-                DELETE FROM sqlite_sequence WHERE name='${tableName}'
-            `);
-            if resetResult is error {
-                return resetResult;
-            }
-        }
-
-        io:println("✓ Auto-increment reset for all tables");
+        // Note: Auto-increment reset is skipped to avoid SQLite issues
+        io:println("✓ Auto-increment reset skipped");
 
         // Run seeding again
         check self.seed();

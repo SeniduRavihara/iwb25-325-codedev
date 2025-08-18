@@ -26,13 +26,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ContestsPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
   const [contests, setContests] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [registrationStatus, setRegistrationStatus] = useState<
+    Record<number, boolean>
+  >({});
+  const [registeringContest, setRegisteringContest] = useState<number | null>(
+    null
+  );
 
-  // Fetch contests from API
+  // Fetch contests from API and check registration status
   useEffect(() => {
     const fetchContests = async () => {
       if (!isAuthenticated) {
@@ -44,6 +50,42 @@ export default function ContestsPage() {
         const response = await apiService.getContests();
         if (response.success && response.data && response.data.data) {
           setContests(response.data.data);
+
+          // Check registration status for each contest
+          if (token) {
+            const statusPromises = response.data.data.map(
+              async (contest: Contest) => {
+                try {
+                  const statusResponse =
+                    await apiService.checkContestRegistration(
+                      contest.id,
+                      token
+                    );
+                  return {
+                    contestId: contest.id,
+                    isRegistered:
+                      statusResponse.success &&
+                      statusResponse.data?.data?.isRegistered,
+                  };
+                } catch (err) {
+                  console.error(
+                    `Error checking registration for contest ${contest.id}:`,
+                    err
+                  );
+                  return { contestId: contest.id, isRegistered: false };
+                }
+              }
+            );
+
+            const statusResults = await Promise.all(statusPromises);
+            const statusMap: Record<number, boolean> = {};
+            statusResults.forEach((result) => {
+              if (result) {
+                statusMap[result.contestId] = result.isRegistered || false;
+              }
+            });
+            setRegistrationStatus(statusMap);
+          }
         } else {
           setError(response.message || "Failed to fetch contests");
         }
@@ -56,7 +98,7 @@ export default function ContestsPage() {
     };
 
     fetchContests();
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, token]);
 
   // Show loading or redirect if not authenticated
   if (!isAuthenticated) {
@@ -114,6 +156,83 @@ export default function ContestsPage() {
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleRegisterForContest = async (contestId: number) => {
+    if (!token) {
+      alert("Authentication required");
+      return;
+    }
+
+    setRegisteringContest(contestId);
+    try {
+      const response = await apiService.registerForContest(contestId, token);
+      if (response.success) {
+        setRegistrationStatus((prev) => ({ ...prev, [contestId]: true }));
+        alert("Successfully registered for contest!");
+
+        // Update the contest's participant count
+        setContests((prev) =>
+          prev.map((contest) =>
+            contest.id === contestId
+              ? {
+                  ...contest,
+                  participants_count: contest.participants_count + 1,
+                }
+              : contest
+          )
+        );
+      } else {
+        alert(response.message || "Failed to register for contest");
+      }
+    } catch (err) {
+      console.error("Error registering for contest:", err);
+      alert("Network error occurred");
+    } finally {
+      setRegisteringContest(null);
+    }
+  };
+
+  const handleUnregisterFromContest = async (contestId: number) => {
+    if (!token) {
+      alert("Authentication required");
+      return;
+    }
+
+    if (!confirm("Are you sure you want to unregister from this contest?")) {
+      return;
+    }
+
+    setRegisteringContest(contestId);
+    try {
+      const response = await apiService.unregisterFromContest(contestId, token);
+      if (response.success) {
+        setRegistrationStatus((prev) => ({ ...prev, [contestId]: false }));
+        alert("Successfully unregistered from contest");
+
+        // Update the contest's participant count
+        setContests((prev) =>
+          prev.map((contest) =>
+            contest.id === contestId
+              ? {
+                  ...contest,
+                  participants_count: Math.max(
+                    0,
+                    contest.participants_count - 1
+                  ),
+                }
+              : contest
+          )
+        );
+      } else {
+        alert(response.message || "Failed to unregister from contest");
+      }
+    } catch (err) {
+      console.error("Error unregistering from contest:", err);
+      alert("Network error occurred");
+    } finally {
+      setRegisteringContest(null);
+    }
   };
 
   return (
@@ -207,9 +326,35 @@ export default function ContestsPage() {
                         </Link>
                       </Button>
                     )}
-                    {contest.status === "upcoming" && (
-                      <Button size="sm">Register</Button>
-                    )}
+                    {contest.status === "upcoming" &&
+                      (registrationStatus[contest.id] ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleUnregisterFromContest(contest.id)
+                          }
+                          disabled={registeringContest === contest.id}
+                        >
+                          {registeringContest === contest.id ? (
+                            <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            "Unregister"
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleRegisterForContest(contest.id)}
+                          disabled={registeringContest === contest.id}
+                        >
+                          {registeringContest === contest.id ? (
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            "Register"
+                          )}
+                        </Button>
+                      ))}
                     {contest.status === "active" && (
                       <Button size="sm" asChild>
                         <Link href={`/contests/${contest.id}/participate`}>

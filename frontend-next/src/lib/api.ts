@@ -345,6 +345,46 @@ class ApiService {
       },
     });
   }
+
+  // Contest registration methods
+  async registerForContest(
+    contestId: number,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/register`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async unregisterFromContest(
+    contestId: number,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/register`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  async checkContestRegistration(
+    contestId: number,
+    token: string
+  ): Promise<ApiResponse<{ data: { isRegistered: boolean } }>> {
+    return this.request<{ data: { isRegistered: boolean } }>(
+      `/contests/${contestId}/register`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  }
 }
 
 export const apiService = new ApiService();

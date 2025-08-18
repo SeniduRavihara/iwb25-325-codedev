@@ -1046,6 +1046,158 @@ service / on new http:Listener(serverPort) {
         });
         check caller->respond(response);
     }
+
+    // Register for contest
+    resource function post contests/[int contestId]/register(http:Caller caller, http:Request req) returns error? {
+        // Check authentication
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Register user for contest
+        sql:ExecutionResult|error result = database:registerForContest(contestId, userResult.id);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to register for contest: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Successfully registered for contest"
+        });
+        check caller->respond(response);
+    }
+
+    // Unregister from contest
+    resource function delete contests/[int contestId]/register(http:Caller caller, http:Request req) returns error? {
+        // Check authentication
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Unregister user from contest
+        sql:ExecutionResult|error result = database:unregisterFromContest(contestId, userResult.id);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to unregister from contest: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Successfully unregistered from contest"
+        });
+        check caller->respond(response);
+    }
+
+    // Check if user is registered for contest
+    resource function get contests/[int contestId]/register(http:Caller caller, http:Request req) returns error? {
+        // Check authentication
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Check if user is registered
+        boolean|error isRegistered = database:isUserRegisteredForContest(contestId, userResult.id);
+        if isRegistered is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to check registration status: " + isRegistered.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": {
+                "isRegistered": isRegistered
+            }
+        });
+        check caller->respond(response);
+    }
 }
 
 // Function to analyze code complexity

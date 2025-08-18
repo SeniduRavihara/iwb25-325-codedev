@@ -1,7 +1,9 @@
 import backend_ballerina.models;
 
 import ballerina/io;
+import ballerina/regex;
 import ballerina/sql;
+import ballerina/time;
 import ballerinax/java.jdbc;
 
 // Configuration
@@ -272,7 +274,7 @@ public function debugSpecificContests() returns record {}[]|error {
     io:println("DEBUG: Using exact same query as main function");
 
     stream<record {}, sql:Error?> contestStream =
-        dbClient->query(`SELECT id, title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at FROM contests ORDER BY created_at DESC`);
+        dbClient->query(`SELECT id, title, description, datetime(start_time) as start_time, datetime(end_time) as end_time, duration, status, max_participants, prizes, rules, created_by, datetime(registration_deadline) as registration_deadline, participants_count, datetime(created_at) as created_at, datetime(updated_at) as updated_at FROM contests ORDER BY created_at DESC`);
 
     record {}[] rawContests = [];
 
@@ -351,4 +353,143 @@ public function deleteContest(int contestId) returns sql:ExecutionResult|error {
     return dbClient->execute(`
         DELETE FROM contests WHERE id = ${contestId}
     `);
+}
+
+// Register user for contest
+public function registerForContest(int contestId, int userId) returns sql:ExecutionResult|error {
+    // Check if user is already registered
+    boolean|error alreadyRegistered = isUserRegisteredForContest(contestId, userId);
+    if alreadyRegistered is error {
+        return alreadyRegistered;
+    }
+
+    if alreadyRegistered {
+        return error("User is already registered for this contest");
+    }
+
+    // Check if contest exists and registration is still open
+    io:println("DEBUG: Checking contest with ID: " + contestId.toString());
+
+    stream<record {|string registration_deadline; int max_participants; int participants_count;|}, sql:Error?> contestStream =
+        dbClient->query(`SELECT datetime(registration_deadline) as registration_deadline, max_participants, participants_count FROM contests WHERE id = ${contestId}`);
+
+    record {|record {|string registration_deadline; int max_participants; int participants_count;|} value;|}|error? contestResult = contestStream.next();
+    error? closeResult = contestStream.close();
+
+    if closeResult is error {
+        io:println("DEBUG: Error closing stream: " + closeResult.message());
+        return closeResult;
+    }
+
+    if contestResult is () {
+        io:println("DEBUG: No contest found with ID: " + contestId.toString());
+        return error("Contest not found");
+    }
+
+    if contestResult is error {
+        io:println("DEBUG: Error getting contest result: " + contestResult.message());
+        return error("Contest not found");
+    }
+
+    io:println("DEBUG: Contest found with registration deadline: " + contestResult.value.registration_deadline);
+
+    // Check if registration deadline has passed
+    string registrationDeadline = contestResult.value.registration_deadline;
+    time:Utc currentTime = time:utcNow();
+
+    // Convert SQLite datetime format to ISO format
+    string isoDeadline = registrationDeadline;
+
+    // If the date has space instead of 'T', replace it
+    if registrationDeadline.includes(" ") {
+        isoDeadline = regex:replaceAll(registrationDeadline, " ", "T");
+    }
+
+    // If the date doesn't end with 'Z', add it
+    if !isoDeadline.endsWith("Z") {
+        isoDeadline = isoDeadline + "Z";
+    }
+
+    io:println("DEBUG: Original deadline: " + registrationDeadline);
+    io:println("DEBUG: Converted deadline: " + isoDeadline);
+
+    time:Utc|error deadlineTime = time:utcFromString(isoDeadline);
+
+    if deadlineTime is error {
+        io:println("DEBUG: Failed to parse deadline: " + isoDeadline);
+        return error("Invalid registration deadline format: " + registrationDeadline);
+    }
+
+    if currentTime[0] > deadlineTime[0] {
+        return error("Registration deadline has passed");
+    }
+
+    // Check if contest is full
+    int maxParticipants = contestResult.value.max_participants;
+    int currentParticipants = contestResult.value.participants_count;
+
+    if maxParticipants > 0 && currentParticipants >= maxParticipants {
+        return error("Contest is full");
+    }
+
+    // Register user for contest
+    sql:ExecutionResult|error registerResult = dbClient->execute(`
+        INSERT INTO contest_participants (contest_id, user_id, score, rank, submissions_count, registered_at) 
+        VALUES (${contestId}, ${userId}, 0, 0, 0, CURRENT_TIMESTAMP)
+    `);
+
+    if registerResult is error {
+        return registerResult;
+    }
+
+    // Update contest participants count
+    return dbClient->execute(`
+        UPDATE contests SET participants_count = participants_count + 1 WHERE id = ${contestId}
+    `);
+}
+
+// Unregister user from contest
+public function unregisterFromContest(int contestId, int userId) returns sql:ExecutionResult|error {
+    // Check if user is registered
+    boolean|error isRegistered = isUserRegisteredForContest(contestId, userId);
+    if isRegistered is error {
+        return isRegistered;
+    }
+
+    if !isRegistered {
+        return error("User is not registered for this contest");
+    }
+
+    // Unregister user from contest
+    sql:ExecutionResult|error unregisterResult = dbClient->execute(`
+        DELETE FROM contest_participants WHERE contest_id = ${contestId} AND user_id = ${userId}
+    `);
+
+    if unregisterResult is error {
+        return unregisterResult;
+    }
+
+    // Update contest participants count
+    return dbClient->execute(`
+        UPDATE contests SET participants_count = participants_count - 1 WHERE id = ${contestId}
+    `);
+}
+
+// Check if user is registered for contest
+public function isUserRegisteredForContest(int contestId, int userId) returns boolean|error {
+    stream<record {|int count;|}, sql:Error?> resultStream =
+        dbClient->query(`SELECT COUNT(*) as count FROM contest_participants WHERE contest_id = ${contestId} AND user_id = ${userId}`);
+
+    record {|record {|int count;|} value;|}|error? result = resultStream.next();
+    error? closeResult = resultStream.close();
+
+    if closeResult is error {
+        return closeResult;
+    }
+
+    if result is () || result is error {
+        return false;
+    }
+
+    return result.value.count > 0;
 }
