@@ -10,12 +10,71 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { mockChallenges } from "@/lib/mock-data";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService, type Challenge } from "@/lib/api";
 import { Clock, Save, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function CreateContestPage() {
+  const { isAuthenticated, user, token } = useAuth();
+  const router = useRouter();
+
+  // Redirect to login if not authenticated, or to home if not admin
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    } else if (user?.role !== "admin") {
+      router.push("/");
+    }
+  }, [isAuthenticated, user?.role, router]);
+
+  // Fetch challenges for selection
+  useEffect(() => {
+    const fetchChallenges = async () => {
+      if (!token) {
+        setChallengesError("No authentication token");
+        setLoadingChallenges(false);
+        return;
+      }
+
+      try {
+        const response = await apiService.getAdminChallenges(token);
+        if (response.success && response.data && response.data.data) {
+          setChallenges(response.data.data);
+        } else {
+          setChallengesError(response.message || "Failed to fetch challenges");
+        }
+      } catch (err) {
+        setChallengesError("Network error occurred");
+        console.error("Error fetching challenges:", err);
+      } finally {
+        setLoadingChallenges(false);
+      }
+    };
+
+    if (token) {
+      fetchChallenges();
+    }
+  }, [token]);
+
+  // Show loading if not authenticated or not admin
+  if (!isAuthenticated || user?.role !== "admin") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">
+            {!isAuthenticated
+              ? "Redirecting to login..."
+              : "Access denied. Redirecting..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -29,6 +88,9 @@ export default function CreateContestPage() {
   });
 
   const [selectedChallenges, setSelectedChallenges] = useState<string[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
+  const [challengesError, setChallengesError] = useState<string | null>(null);
 
   const addPrize = () => {
     if (
@@ -58,17 +120,80 @@ export default function CreateContestPage() {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedChallenges.length === 0) {
-      alert("Please select at least one challenge");
-      return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Check authentication
+      if (!token) {
+        setSubmitError("Authentication required. Please log in again.");
+        return;
+      }
+
+      // Validate required fields
+      if (!formData.title.trim()) {
+        setSubmitError("Title is required");
+        return;
+      }
+      if (!formData.description.trim()) {
+        setSubmitError("Description is required");
+        return;
+      }
+      if (!formData.startTime) {
+        setSubmitError("Start time is required");
+        return;
+      }
+      if (!formData.registrationDeadline) {
+        setSubmitError("Registration deadline is required");
+        return;
+      }
+      if (selectedChallenges.length === 0) {
+        setSubmitError("Please select at least one challenge");
+        return;
+      }
+
+      // Calculate end time based on start time and duration
+      const startDate = new Date(formData.startTime);
+      const endDate = new Date(
+        startDate.getTime() + formData.duration * 60 * 1000
+      );
+
+      // Prepare contest data for API
+      const contestData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        duration: formData.duration,
+        max_participants: formData.maxParticipants,
+        prizes: JSON.stringify(formData.prizes), // Convert array to JSON string
+        rules: formData.rules.trim(),
+        registration_deadline: new Date(
+          formData.registrationDeadline
+        ).toISOString(),
+      };
+
+      // Create contest via API
+      const response = await apiService.createContest(contestData, token);
+
+      if (response.success) {
+        // TODO: Link selected challenges to the contest
+        // For now, just redirect to contests list with success message
+        router.push("/admin/contests?success=true");
+      } else {
+        setSubmitError(response.message || "Failed to create contest");
+      }
+    } catch (err) {
+      console.error("Error creating contest:", err);
+      setSubmitError("Network error occurred");
+    } finally {
+      setIsSubmitting(false);
     }
-    // TODO: Implement contest creation logic
-    console.log("Creating contest:", {
-      ...formData,
-      challenges: selectedChallenges,
-    });
   };
 
   return (
@@ -232,76 +357,102 @@ export default function CreateContestPage() {
               <CardTitle>Select Challenges</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {mockChallenges.map((challenge) => (
-                  <div
-                    key={challenge.id}
-                    className="flex items-start space-x-3 p-4 border border-border rounded-lg"
-                  >
-                    <Checkbox
-                      id={`challenge-${challenge.id}`}
-                      checked={selectedChallenges.includes(challenge.id)}
-                      onCheckedChange={() => toggleChallenge(challenge.id)}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Label
-                          htmlFor={`challenge-${challenge.id}`}
-                          className="font-medium cursor-pointer"
-                        >
-                          {challenge.title}
-                        </Label>
-                        <Badge
-                          variant={
-                            challenge.difficulty === "Easy"
-                              ? "secondary"
-                              : challenge.difficulty === "Medium"
-                              ? "default"
-                              : "destructive"
+              {loadingChallenges ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-muted-foreground">
+                    Loading challenges...
+                  </p>
+                </div>
+              ) : challengesError ? (
+                <div className="text-center py-8">
+                  <div className="text-red-500">Error: {challengesError}</div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {challenges.map((challenge) => (
+                      <div
+                        key={challenge.id}
+                        className="flex items-start space-x-3 p-4 border border-border rounded-lg"
+                      >
+                        <Checkbox
+                          id={`challenge-${challenge.id}`}
+                          checked={selectedChallenges.includes(
+                            challenge.id.toString()
+                          )}
+                          onCheckedChange={() =>
+                            toggleChallenge(challenge.id.toString())
                           }
-                        >
-                          {challenge.difficulty}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {(() => {
-                          try {
-                            const tagsArray = JSON.parse(challenge.tags);
-                            return tagsArray.map((tag: string) => (
-                              <Badge
-                                key={tag}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {tag}
-                              </Badge>
-                            ));
-                          } catch (error) {
-                            return (
-                              <span className="text-muted-foreground text-xs">
-                                No tags
-                              </span>
-                            );
-                          }
-                        })()}
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {challenge.timeLimit}min
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Label
+                              htmlFor={`challenge-${challenge.id}`}
+                              className="font-medium cursor-pointer"
+                            >
+                              {challenge.title}
+                            </Label>
+                            <Badge
+                              variant={
+                                challenge.difficulty === "Easy"
+                                  ? "secondary"
+                                  : challenge.difficulty === "Medium"
+                                  ? "default"
+                                  : "destructive"
+                              }
+                            >
+                              {challenge.difficulty}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(() => {
+                              try {
+                                // Handle both string array (mock data) and JSON string (API data)
+                                const tagsArray =
+                                  typeof challenge.tags === "string"
+                                    ? JSON.parse(challenge.tags)
+                                    : challenge.tags;
+                                return tagsArray.map((tag: string) => (
+                                  <Badge
+                                    key={tag}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {tag}
+                                  </Badge>
+                                ));
+                              } catch (error) {
+                                return (
+                                  <span className="text-muted-foreground text-xs">
+                                    No tags
+                                  </span>
+                                );
+                              }
+                            })()}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {Math.floor(challenge.time_limit / 60)}min
+                            </div>
+                            <div>
+                              Success Rate:{" "}
+                              {Math.round(challenge.success_rate * 100)}%
+                            </div>
+                          </div>
                         </div>
-                        <div>Success Rate: {challenge.successRate}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedChallenges.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <div className="text-sm font-medium">
+                        Selected: {selectedChallenges.length} challenges
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              {selectedChallenges.length > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <div className="text-sm font-medium">
-                    Selected: {selectedChallenges.length} challenges
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -325,13 +476,20 @@ export default function CreateContestPage() {
             </CardContent>
           </Card>
 
+          {/* Error Display */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-red-800 text-sm">{submitError}</div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
-              <Link href="/contests">Cancel</Link>
+              <Link href="/admin/contests">Cancel</Link>
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={isSubmitting}>
               <Save className="h-4 w-4 mr-2" />
-              Create Contest
+              {isSubmitting ? "Creating..." : "Create Contest"}
             </Button>
           </div>
         </form>
