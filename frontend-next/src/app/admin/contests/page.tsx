@@ -1,3 +1,5 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockContests } from "@/lib/mock-data";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiService, type Contest } from "@/lib/api";
 import {
   Calendar,
   Clock,
@@ -28,8 +31,39 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function AdminContestsPage() {
+  const { token } = useAuth();
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchContests = async () => {
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiService.getAdminContests(token);
+        if (response.success && response.data && response.data.data) {
+          setContests(response.data.data);
+        } else {
+          setError(response.message || "Failed to fetch contests");
+        }
+      } catch (err) {
+        setError("Network error occurred");
+        console.error("Error fetching contests:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContests();
+  }, [token]);
   const getStatusColor = (status: string) => {
     switch (status) {
       case "upcoming":
@@ -47,9 +81,28 @@ export default function AdminContestsPage() {
     return new Date(dateString).toLocaleString();
   };
 
-  const getChallengeCount = (challengeIds: string[]) => {
-    return challengeIds.length;
-  };
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading contests...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-8">
+          <div className="text-red-500">Error: {error}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -102,7 +155,7 @@ export default function AdminContestsPage() {
 
       {/* Contests Grid */}
       <div className="grid gap-6">
-        {mockContests.map((contest) => (
+        {contests.map((contest) => (
           <Card key={contest.id} className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -152,7 +205,7 @@ export default function AdminContestsPage() {
                   <Calendar className="h-4 w-4" />
                   <div>
                     <div className="font-medium">Start Time</div>
-                    <div>{formatDateTime(contest.startTime)}</div>
+                    <div>{formatDateTime(contest.start_time)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -170,9 +223,9 @@ export default function AdminContestsPage() {
                   <div>
                     <div className="font-medium">Participants</div>
                     <div>
-                      {contest.participants}
-                      {contest.maxParticipants
-                        ? `/${contest.maxParticipants}`
+                      {contest.participants_count}
+                      {contest.max_participants
+                        ? `/${contest.max_participants}`
                         : ""}
                     </div>
                   </div>
@@ -182,23 +235,48 @@ export default function AdminContestsPage() {
                   <div>
                     <div className="font-medium">Problems</div>
                     <div>
-                      {getChallengeCount(contest.challenges)} challenges
+                      {/* TODO: Get challenge count from contest_challenges table */}
+                      <span className="text-muted-foreground">N/A</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {contest.prizes.length > 0 && (
+              {contest.prizes && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="text-sm font-medium text-muted-foreground mb-2">
                     Prizes:
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {contest.prizes.map((prize, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {prize}
-                      </Badge>
-                    ))}
+                    {(() => {
+                      try {
+                        if (!contest.prizes) {
+                          return (
+                            <span className="text-muted-foreground text-xs">
+                              No prizes
+                            </span>
+                          );
+                        }
+                        const prizesArray = JSON.parse(contest.prizes);
+                        return prizesArray.map(
+                          (prize: string, index: number) => (
+                            <Badge
+                              key={index}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {prize}
+                            </Badge>
+                          )
+                        );
+                      } catch (error) {
+                        return (
+                          <span className="text-muted-foreground text-xs">
+                            No prizes
+                          </span>
+                        );
+                      }
+                    })()}
                   </div>
                 </div>
               )}

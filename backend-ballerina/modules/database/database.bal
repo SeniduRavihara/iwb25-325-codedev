@@ -104,3 +104,203 @@ public function getUserByUsername(string username) returns models:User|error {
 public function getDbClient() returns jdbc:Client {
     return dbClient;
 }
+
+// Get all users (test function)
+public function getAllUsers() returns models:User[]|error {
+    stream<models:User, sql:Error?> userStream =
+        dbClient->query(`SELECT id, username, email, password_hash, is_admin, role, created_at FROM users ORDER BY created_at DESC`);
+
+    models:User[] users = [];
+    record {|models:User value;|}|error? result = userStream.next();
+
+    while result is record {|models:User value;|} {
+        users.push(result.value);
+        result = userStream.next();
+    }
+
+    error? closeResult = userStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    return users;
+}
+
+// Get all challenges
+public function getAllChallenges() returns models:Challenge[]|error {
+    io:println("DEBUG: Starting getAllChallenges query");
+
+    // Use raw query first, then manually map to avoid type issues
+    stream<record {}, sql:Error?> challengeStream =
+        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
+
+    models:Challenge[] challenges = [];
+    record {|record {} value;|}|error? result = challengeStream.next();
+
+    io:println("DEBUG: Got first result");
+
+    while result is record {|record {} value;|} {
+        record {} rawChallenge = result.value;
+        io:println("DEBUG: Processing challenge: " + rawChallenge.toString());
+
+        // Manually create the Challenge record with proper type conversion
+        models:Challenge challenge = {
+            id: <int>rawChallenge["id"],
+            title: <string>rawChallenge["title"],
+            description: <string>rawChallenge["description"],
+            difficulty: <string>rawChallenge["difficulty"],
+            tags: <string>rawChallenge["tags"],
+            time_limit: <int>rawChallenge["time_limit"],
+            memory_limit: <int>rawChallenge["memory_limit"],
+            author_id: <int>rawChallenge["author_id"],
+            submissions_count: <int>rawChallenge["submissions_count"],
+            success_rate: <decimal>rawChallenge["success_rate"],  // Convert int to decimal
+            created_at: <string>rawChallenge["created_at"],
+            updated_at: <string>rawChallenge["updated_at"]
+        };
+
+        challenges.push(challenge);
+        result = challengeStream.next();
+    }
+
+    check challengeStream.close();
+
+    io:println("DEBUG: Returning " + challenges.length().toString() + " challenges");
+    return challenges;
+}
+
+// Get all contests
+public function getAllContests() returns models:Contest[]|error {
+    io:println("DEBUG: Starting getAllContests with datetime conversion");
+
+    // Convert DATETIME fields to strings in the SQL query
+    stream<record {}, sql:Error?> contestStream =
+        dbClient->query(`
+            SELECT 
+                id, 
+                title, 
+                description, 
+                datetime(start_time) as start_time,
+                datetime(end_time) as end_time,
+                duration, 
+                status, 
+                max_participants, 
+                prizes, 
+                rules, 
+                created_by, 
+                datetime(registration_deadline) as registration_deadline,
+                participants_count, 
+                datetime(created_at) as created_at,
+                datetime(updated_at) as updated_at
+            FROM contests 
+            ORDER BY created_at DESC
+        `);
+
+    models:Contest[] contests = [];
+
+    check from record {} raw in contestStream
+        do {
+            io:println("DEBUG: Raw contest: " + raw.toString());
+
+            models:Contest contest = {
+                id: <int>raw["id"],
+                title: <string>raw["title"],
+                description: <string>raw["description"],
+                start_time: <string>raw["start_time"],
+                end_time: <string>raw["end_time"],
+                duration: <int>raw["duration"],
+                status: <string>raw["status"],
+                max_participants: raw["max_participants"] == () ? () : <int>raw["max_participants"],
+                prizes: raw["prizes"] == () ? () : <string>raw["prizes"],
+                rules: raw["rules"] == () ? () : <string>raw["rules"],
+                created_by: <int>raw["created_by"],
+                registration_deadline: <string>raw["registration_deadline"],
+                participants_count: <int>raw["participants_count"],
+                created_at: <string>raw["created_at"],
+                updated_at: <string>raw["updated_at"]
+            };
+
+            contests.push(contest);
+        };
+
+    io:println("DEBUG: Returning " + contests.length().toString() + " contests");
+    return contests;
+}
+
+// Get test cases by challenge ID
+public function getTestCasesByChallengeId(int challengeId) returns models:TestCase[]|error {
+    stream<models:TestCase, sql:Error?> testCaseStream =
+        dbClient->query(`SELECT id, challenge_id, input_data, expected_output, is_hidden, points, created_at FROM test_cases WHERE challenge_id = ${challengeId} AND is_hidden = FALSE ORDER BY id`);
+
+    models:TestCase[] testCases = [];
+    record {|models:TestCase value;|}|error? result = testCaseStream.next();
+
+    while result is record {|models:TestCase value;|} {
+        testCases.push(result.value);
+        result = testCaseStream.next();
+    }
+
+    error? closeResult = testCaseStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    return testCases;
+}
+
+// Create new challenge
+public function createChallenge(models:ChallengeCreate challengeData, int authorId) returns sql:ExecutionResult|error {
+    return dbClient->execute(`
+        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at) 
+        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+}
+
+// Create new contest
+public function createContest(models:ContestCreate contestData, int createdBy) returns sql:ExecutionResult|error {
+    return dbClient->execute(`
+        INSERT INTO contests (title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at) 
+        VALUES (${contestData.title}, ${contestData.description}, ${contestData.start_time}, ${contestData.end_time}, ${contestData.duration}, 'upcoming', ${contestData.max_participants}, ${contestData.prizes}, ${contestData.rules}, ${createdBy}, ${contestData.registration_deadline}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+}
+
+/// Add these debug functions to your database module
+
+// Add this debug function that uses the EXACT same query as your main function
+
+public function debugSpecificContests() returns record {}[]|error {
+    io:println("DEBUG: Using exact same query as main function");
+
+    stream<record {}, sql:Error?> contestStream =
+        dbClient->query(`SELECT id, title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at FROM contests ORDER BY created_at DESC`);
+
+    record {}[] rawContests = [];
+
+    record {|record {} value;|}|error? result = contestStream.next();
+    while result is record {|record {} value;|} {
+        io:println("DEBUG: Found contest record: " + result.value.toString());
+        rawContests.push(result.value);
+        result = contestStream.next();
+    }
+
+    check contestStream.close();
+    io:println("DEBUG: Total contests found: " + rawContests.length().toString());
+    return rawContests;
+}
+
+// Also check if there are any NULL values causing issues
+public function debugContestsSimple() returns record {|int id; string title;|}[]|error {
+    stream<record {|int id; string title;|}, sql:Error?> contestStream =
+        dbClient->query(`SELECT id, title FROM contests ORDER BY created_at DESC`);
+
+    record {|int id; string title;|}[] contests = [];
+
+    record {|record {|int id; string title;|} value;|}|error? result = contestStream.next();
+    while result is record {|record {|int id; string title;|} value;|} {
+        contests.push(result.value);
+        result = contestStream.next();
+    }
+
+    check contestStream.close();
+    return contests;
+}

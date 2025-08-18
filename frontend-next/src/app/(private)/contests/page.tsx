@@ -19,21 +19,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockContests } from "@/lib/mock-data";
+import { apiService, type Contest } from "@/lib/api";
 import { Calendar, Clock, Plus, Search, Trophy, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function ContestsPage() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const [contests, setContests] = useState<Contest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
+  // Fetch contests from API
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
+    const fetchContests = async () => {
+      if (!isAuthenticated) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const response = await apiService.getContests();
+        if (response.success && response.data && response.data.data) {
+          setContests(response.data.data);
+        } else {
+          setError(response.message || "Failed to fetch contests");
+        }
+      } catch (err) {
+        setError("Network error occurred");
+        console.error("Error fetching contests:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContests();
   }, [isAuthenticated, router]);
 
   // Show loading or redirect if not authenticated
@@ -43,6 +65,35 @@ export default function ContestsPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading contests...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="text-center py-8">
+            <div className="text-red-500">Error: {error}</div>
+          </div>
         </div>
       </div>
     );
@@ -63,10 +114,6 @@ export default function ContestsPage() {
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
-  };
-
-  const getChallengeCount = (challengeIds: string[]) => {
-    return challengeIds.length;
   };
 
   return (
@@ -125,7 +172,7 @@ export default function ContestsPage() {
 
         {/* Contests Grid */}
         <div className="grid gap-6">
-          {mockContests.map((contest) => (
+          {contests.map((contest) => (
             <Card
               key={contest.id}
               className="hover:shadow-lg transition-shadow"
@@ -186,7 +233,7 @@ export default function ContestsPage() {
                     <Calendar className="h-4 w-4" />
                     <div>
                       <div className="font-medium">Start Time</div>
-                      <div>{formatDateTime(contest.startTime)}</div>
+                      <div>{formatDateTime(contest.start_time)}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -204,9 +251,9 @@ export default function ContestsPage() {
                     <div>
                       <div className="font-medium">Participants</div>
                       <div>
-                        {contest.participants}
-                        {contest.maxParticipants
-                          ? `/${contest.maxParticipants}`
+                        {contest.participants_count}
+                        {contest.max_participants
+                          ? `/${contest.max_participants}`
                           : ""}
                       </div>
                     </div>
@@ -216,27 +263,41 @@ export default function ContestsPage() {
                     <div>
                       <div className="font-medium">Problems</div>
                       <div>
-                        {getChallengeCount(contest.challenges)} challenges
+                        {/* TODO: Get challenge count from contest_challenges table */}
+                        <span className="text-muted-foreground">N/A</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {contest.prizes.length > 0 && (
+                {contest.prizes && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <div className="text-sm font-medium text-muted-foreground mb-2">
                       Prizes:
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {contest.prizes.map((prize, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="text-xs"
-                        >
-                          {prize}
-                        </Badge>
-                      ))}
+                      {(() => {
+                        try {
+                          const prizesArray = JSON.parse(contest.prizes);
+                          return prizesArray.map(
+                            (prize: string, index: number) => (
+                              <Badge
+                                key={index}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {prize}
+                              </Badge>
+                            )
+                          );
+                        } catch (error) {
+                          return (
+                            <span className="text-muted-foreground text-xs">
+                              No prizes
+                            </span>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                 )}

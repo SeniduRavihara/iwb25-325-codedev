@@ -8,6 +8,7 @@ import ballerina/http;
 import ballerina/io;
 import ballerina/os;
 import ballerina/regex;
+import ballerina/sql;
 import ballerina/time;
 
 // Configuration
@@ -443,105 +444,147 @@ service / on new http:Listener(serverPort) {
 
     // ===== SIMPLE API ENDPOINTS FOR FRONTEND =====
 
-    // Get all challenges (public)
-    resource function get challenges(http:Caller caller, http:Request req) returns error? {
+    // Test API - Get all users from database (like authentication works)
+    resource function get test_users(http:Caller caller, http:Request req) returns error? {
+        // Use the database function (same pattern as authentication)
+        models:Challenge[]|error users = database:getAllChallenges();
+
+        if users is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch users: " + users.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
         http:Response response = new;
         response.statusCode = 200;
         response.setJsonPayload({
             "success": true,
-            "data": [
-                {
-                    "id": 1,
-                    "title": "Two Sum",
-                    "description": "Find two numbers that add up to target",
-                    "difficulty": "Easy",
-                    "tags": ["Array", "Hash Table"],
-                    "time_limit": 30,
-                    "memory_limit": 256,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T10:00:00Z",
-                    "updated_at": "2024-01-15T10:00:00Z"
-                },
-                {
-                    "id": 2,
-                    "title": "Binary Tree Traversal",
-                    "description": "Inorder traversal of binary tree",
-                    "difficulty": "Medium",
-                    "tags": ["Tree", "DFS"],
-                    "time_limit": 45,
-                    "memory_limit": 512,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T11:00:00Z",
-                    "updated_at": "2024-01-15T11:00:00Z"
-                },
-                {
-                    "id": 3,
-                    "title": "Maximum Subarray",
-                    "description": "Find maximum sum subarray",
-                    "difficulty": "Hard",
-                    "tags": ["Array", "DP"],
-                    "time_limit": 60,
-                    "memory_limit": 512,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T12:00:00Z",
-                    "updated_at": "2024-01-15T12:00:00Z"
-                }
-            ]
+            "message": "Users fetched from database successfully!",
+            "data": users
         });
+        check caller->respond(response);
+    }
+
+    // Get all challenges (public)
+    resource function get challenges(http:Caller caller, http:Request req) returns error? {
+        io:println("DEBUG: Starting challenges endpoint");
+
+        models:Challenge[]|error challenges = database:getAllChallenges();
+        io:println("DEBUG: Database call completed");
+
+        if challenges is error {
+            io:println("DEBUG: Error from database: " + challenges.message());
+            io:println("DEBUG: Error details: " + challenges.toString());
+
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch challenges: " + challenges.message(),
+                "error_details": challenges.toString()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        io:println("DEBUG: Successfully got " + challenges.length().toString() + " challenges");
+
+        // Log first challenge for debugging (if exists)
+        if challenges.length() > 0 {
+            io:println("DEBUG: First challenge title: " + challenges[0].title);
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": challenges,
+            "count": challenges.length()
+        });
+
+        io:println("DEBUG: Sending response with " + challenges.length().toString() + " challenges");
         check caller->respond(response);
     }
 
     // Get all contests (public)
     resource function get contests(http:Caller caller, http:Request req) returns error? {
+        models:Contest[]|error contests = database:getAllContests();
+
+        if contests is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch contests: " + contests.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
         http:Response response = new;
         response.statusCode = 200;
         response.setJsonPayload({
             "success": true,
-            "data": [
-                {
-                    "id": 1,
-                    "title": "Weekly Challenge",
-                    "description": "Test your skills",
-                    "start_time": "2024-01-20T10:00:00Z",
-                    "end_time": "2024-01-20T13:00:00Z",
-                    "duration": 180,
-                    "status": "upcoming",
-                    "max_participants": 100,
-                    "prizes": ["Prize"],
-                    "rules": "Rules",
-                    "created_by": 1,
-                    "registration_deadline": "2024-01-20T09:00:00Z",
-                    "participants_count": 0,
-                    "created_at": "2024-01-15T10:00:00Z",
-                    "updated_at": "2024-01-15T10:00:00Z"
-                },
-                {
-                    "id": 2,
-                    "title": "Advanced Contest",
-                    "description": "Complex problems",
-                    "start_time": "2024-01-18T14:00:00Z",
-                    "end_time": "2024-01-18T18:00:00Z",
-                    "duration": 240,
-                    "status": "upcoming",
-                    "max_participants": 50,
-                    "prizes": ["Prize"],
-                    "rules": "Rules",
-                    "created_by": 1,
-                    "registration_deadline": "2024-01-18T13:00:00Z",
-                    "participants_count": 0,
-                    "created_at": "2024-01-15T11:00:00Z",
-                    "updated_at": "2024-01-15T11:00:00Z"
-                }
-            ]
+            "data": contests.toJson(),
+            "count": contests.length()
         });
         check caller->respond(response);
     }
+
+    // --------------------------------------
+    // === DEBUG ENDPOINTS ===
+
+    // Add these endpoints
+
+    resource function get contests/debug/specific(http:Caller caller, http:Request req) returns error? {
+        record {}[]|error rawData = database:debugSpecificContests();
+
+        http:Response response = new;
+        if rawData is error {
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": rawData.message(),
+                "error_details": rawData.toString()
+            });
+        } else {
+            response.statusCode = 200;
+            response.setJsonPayload({
+                "success": true,
+                "data": rawData.toJson(),
+                "count": rawData.length()
+            });
+        }
+        check caller->respond(response);
+    }
+
+    resource function get contests/debug/simple(http:Caller caller, http:Request req) returns error? {
+        record {|int id; string title;|}[]|error simpleData = database:debugContestsSimple();
+
+        http:Response response = new;
+        if simpleData is error {
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": simpleData.message()
+            });
+        } else {
+            response.statusCode = 200;
+            response.setJsonPayload({
+                "success": true,
+                "data": simpleData.toJson(),
+                "count": simpleData.length()
+            });
+        }
+        check caller->respond(response);
+    }
+
+    // ---------------------------------------
 
     // Get test cases for a challenge (public - only visible test cases)
     resource function get testcases(http:Caller caller, http:Request req) returns error? {
@@ -556,44 +599,17 @@ service / on new http:Listener(serverPort) {
             }
         }
 
-        json testCases = [];
+        models:TestCase[]|error testCases = database:getTestCasesByChallengeId(challengeId);
 
-        if challengeId == 1 {
-            testCases = [
-                {
-                    "id": 1,
-                    "challenge_id": 1,
-                    "input_data": "[2,7,11,15]\n9",
-                    "expected_output": "[0,1]",
-                    "is_hidden": false,
-                    "points": 50,
-                    "created_at": "2024-01-15T10:00:00Z"
-                }
-            ];
-        } else if challengeId == 2 {
-            testCases = [
-                {
-                    "id": 2,
-                    "challenge_id": 2,
-                    "input_data": "[1,null,2,3]",
-                    "expected_output": "[1,3,2]",
-                    "is_hidden": false,
-                    "points": 50,
-                    "created_at": "2024-01-15T11:00:00Z"
-                }
-            ];
-        } else if challengeId == 3 {
-            testCases = [
-                {
-                    "id": 3,
-                    "challenge_id": 3,
-                    "input_data": "[-2,1,-3,4,-1,2,1,-5,4]",
-                    "expected_output": "6",
-                    "is_hidden": false,
-                    "points": 50,
-                    "created_at": "2024-01-15T12:00:00Z"
-                }
-            ];
+        if testCases is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch test cases: " + testCases.message()
+            });
+            check caller->respond(response);
+            return;
         }
 
         http:Response response = new;
@@ -644,54 +660,24 @@ service / on new http:Listener(serverPort) {
             return;
         }
 
+        models:Challenge[]|error challenges = database:getAllChallenges();
+
+        if challenges is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch challenges: " + challenges.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
         http:Response response = new;
         response.statusCode = 200;
         response.setJsonPayload({
             "success": true,
-            "data": [
-                {
-                    "id": 1,
-                    "title": "Two Sum",
-                    "description": "Find two numbers that add up to target",
-                    "difficulty": "Easy",
-                    "tags": ["Array", "Hash Table"],
-                    "time_limit": 30,
-                    "memory_limit": 256,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T10:00:00Z",
-                    "updated_at": "2024-01-15T10:00:00Z"
-                },
-                {
-                    "id": 2,
-                    "title": "Binary Tree Traversal",
-                    "description": "Inorder traversal of binary tree",
-                    "difficulty": "Medium",
-                    "tags": ["Tree", "DFS"],
-                    "time_limit": 45,
-                    "memory_limit": 512,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T11:00:00Z",
-                    "updated_at": "2024-01-15T11:00:00Z"
-                },
-                {
-                    "id": 3,
-                    "title": "Maximum Subarray",
-                    "description": "Find maximum sum subarray",
-                    "difficulty": "Hard",
-                    "tags": ["Array", "DP"],
-                    "time_limit": 60,
-                    "memory_limit": 512,
-                    "author_id": 1,
-                    "submissions_count": 0,
-                    "success_rate": 0.0,
-                    "created_at": "2024-01-15T12:00:00Z",
-                    "updated_at": "2024-01-15T12:00:00Z"
-                }
-            ]
+            "data": challenges
         });
         check caller->respond(response);
     }
@@ -735,46 +721,206 @@ service / on new http:Listener(serverPort) {
             return;
         }
 
+        models:Contest[]|error contests = database:getAllContests();
+
+        if contests is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch contests: " + contests.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
         http:Response response = new;
         response.statusCode = 200;
         response.setJsonPayload({
             "success": true,
-            "data": [
-                {
-                    "id": 1,
-                    "title": "Weekly Challenge",
-                    "description": "Test your skills",
-                    "start_time": "2024-01-20T10:00:00Z",
-                    "end_time": "2024-01-20T13:00:00Z",
-                    "duration": 180,
-                    "status": "upcoming",
-                    "max_participants": 100,
-                    "prizes": ["Prize"],
-                    "rules": "Rules",
-                    "created_by": 1,
-                    "registration_deadline": "2024-01-20T09:00:00Z",
-                    "participants_count": 0,
-                    "created_at": "2024-01-15T10:00:00Z",
-                    "updated_at": "2024-01-15T10:00:00Z"
-                },
-                {
-                    "id": 2,
-                    "title": "Advanced Contest",
-                    "description": "Complex problems",
-                    "start_time": "2024-01-18T14:00:00Z",
-                    "end_time": "2024-01-18T18:00:00Z",
-                    "duration": 240,
-                    "status": "upcoming",
-                    "max_participants": 50,
-                    "prizes": ["Prize"],
-                    "rules": "Rules",
-                    "created_by": 1,
-                    "registration_deadline": "2024-01-18T13:00:00Z",
-                    "participants_count": 0,
-                    "created_at": "2024-01-15T11:00:00Z",
-                    "updated_at": "2024-01-15T11:00:00Z"
-                }
-            ]
+            "data": contests
+        });
+        check caller->respond(response);
+    }
+
+    // Create new challenge (admin only)
+    resource function post challenges(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        models:ChallengeCreate|error challengeData = payload.cloneWithType(models:ChallengeCreate);
+        if challengeData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid challenge data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Create challenge in database
+        sql:ExecutionResult|error result = database:createChallenge(challengeData, userResult.id);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to create challenge: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Challenge created successfully",
+            "data": {
+                "title": challengeData.title,
+                "difficulty": challengeData.difficulty,
+                "author_id": userResult.id
+            }
+        });
+        check caller->respond(response);
+    }
+
+    // Create new contest (admin only)
+    resource function post contests(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        models:ContestCreate|error contestData = payload.cloneWithType(models:ContestCreate);
+        if contestData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid contest data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Create contest in database
+        sql:ExecutionResult|error result = database:createContest(contestData, userResult.id);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to create contest: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Contest created successfully",
+            "data": {
+                "title": contestData.title,
+                "duration": contestData.duration,
+                "created_by": userResult.id
+            }
         });
         check caller->respond(response);
     }

@@ -280,15 +280,26 @@ export default function EditContestPage({ params }: EditContestPageProps) {
                         </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {challenge.tags.map((tag) => (
-                          <Badge
-                            key={tag}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
+                        {(() => {
+                          try {
+                            const tagsArray = JSON.parse(challenge.tags);
+                            return tagsArray.map((tag: string) => (
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {tag}
+                              </Badge>
+                            ));
+                          } catch (error) {
+                            return (
+                              <span className="text-muted-foreground text-xs">
+                                No tags
+                              </span>
+                            );
+                          }
+                        })()}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">

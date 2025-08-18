@@ -50,19 +50,20 @@ public type JwtPayload record {|
 |};
 
 // Challenge models
+// Updated Challenge model based on your database structure
 public type Challenge record {|
     int id;
     string title;
     string description;
-    string difficulty; // "Easy", "Medium", "Hard"
-    string tags; // JSON array of tags
-    int time_limit; // in minutes
-    int memory_limit; // in MB
+    string difficulty;
+    string tags;
+    int time_limit;
+    int memory_limit;
     int author_id;
     int submissions_count;
-    decimal success_rate;
-    string created_at;
-    string updated_at;
+    decimal success_rate; // Make sure this matches - could be int if database stores as int
+    string created_at; // Date as string
+    string updated_at; // Date as string
 |};
 
 public type ChallengeCreate record {|
@@ -103,24 +104,24 @@ public type TestCaseCreate record {|
 |};
 
 // Contest models
+// Updated Contest model to handle SQLite DATETIME fields
 public type Contest record {|
     int id;
     string title;
     string description;
-    string start_time;
-    string end_time;
-    int duration; // in minutes
-    string status; // "upcoming", "active", "completed"
-    int max_participants?;
-    string prizes; // JSON array of prizes
-    string rules;
+    string start_time;        // SQLite DATETIME comes as string
+    string end_time;          // SQLite DATETIME comes as string  
+    int duration;
+    string status;
+    int? max_participants;    // Can be NULL in database
+    string? prizes;           // Can be NULL in database
+    string? rules;            // Can be NULL in database
     int created_by;
-    string registration_deadline;
+    string registration_deadline;  // SQLite DATETIME comes as string
     int participants_count;
-    string created_at;
-    string updated_at;
+    string created_at;        // SQLite DATETIME comes as string
+    string updated_at;        // SQLite DATETIME comes as string
 |};
-
 public type ContestCreate record {|
     string title;
     string description;

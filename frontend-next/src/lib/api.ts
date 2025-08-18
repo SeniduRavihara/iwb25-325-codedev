@@ -121,7 +121,7 @@ export interface Contest {
   duration: number;
   status: string;
   max_participants: number;
-  prizes: string[];
+  prizes: string; // JSON string from backend
   rules: string;
   created_by: number;
   registration_deadline: string;
@@ -138,6 +138,28 @@ export interface TestCase {
   is_hidden: boolean;
   points: number;
   created_at: string;
+}
+
+// Create interfaces
+export interface ChallengeCreate {
+  title: string;
+  description: string;
+  difficulty: string;
+  tags: string;
+  time_limit: number;
+  memory_limit: number;
+}
+
+export interface ContestCreate {
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  max_participants?: number;
+  prizes: string;
+  rules: string;
+  registration_deadline: string;
 }
 
 class ApiService {
@@ -269,6 +291,33 @@ class ApiService {
       headers: {
         "X-Challenge-ID": challengeId.toString(),
       },
+    });
+  }
+
+  // Create methods
+  async createChallenge(
+    challengeData: ChallengeCreate,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>("/challenges", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(challengeData),
+    });
+  }
+
+  async createContest(
+    contestData: ContestCreate,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>("/contests", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(contestData),
     });
   }
 }

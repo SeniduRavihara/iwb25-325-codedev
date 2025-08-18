@@ -51,11 +51,26 @@ export default function ChallengePage({ params }: ChallengePageProps) {
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {challenge.tags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
+                      {(() => {
+                        try {
+                          const tagsArray = JSON.parse(challenge.tags);
+                          return tagsArray.map((tag: string) => (
+                            <Badge
+                              key={tag}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {tag}
+                            </Badge>
+                          ));
+                        } catch (error) {
+                          return (
+                            <span className="text-muted-foreground text-xs">
+                              No tags
+                            </span>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
                   <div className="flex gap-2">
