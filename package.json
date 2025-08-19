@@ -1,14 +1,19 @@
 {
     "name": "HACKATHON_PLUS_BALLERINA",
     "private": true,
-    "workspaces": ["frontend-next"],
+    "workspaces": [
+        "frontend-next"
+    ],
     "scripts": {
-      "dev:frontend": "npm run dev -w frontend-next",
-      "dev:backend": "cd backend-ballerina && bal run",
-      "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
+        "dev:frontend": "npm run dev -w frontend-next",
+        "dev:backend": "cd backend-ballerina && bal run",
+        "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
     },
     "devDependencies": {
-      "concurrently": "^9.0.0"
+        "concurrently": "^9.0.0"
+    },
+    "dependencies": {
+        "deps": "^1.0.0",
+        "peer": "^1.0.2"
     }
-  }
-  
+}
