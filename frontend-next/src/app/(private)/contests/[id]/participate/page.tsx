@@ -35,6 +35,12 @@ export default function ContestParticipatePage({
   } | null>(null);
   const [hasRedirectedToResults, setHasRedirectedToResults] = useState(false);
   const [isContestEnded, setIsContestEnded] = useState(false);
+  const [contestProgress, setContestProgress] = useState<{
+    totalChallenges: number;
+    completedChallenges: number;
+    progressPercentage: number;
+    canEndContest: boolean;
+  } | null>(null);
 
   const resolvedParams = use(params);
   const contestId = parseInt(resolvedParams.id);
@@ -73,6 +79,27 @@ export default function ContestParticipatePage({
         ) {
           // For now, show all challenges. In the future, this should filter by contest
           setChallenges(challengesResponse.data.data);
+
+          // Get progress from localStorage
+          const storageKey = `contest_${contestId}_results`;
+          const storedResults = JSON.parse(
+            localStorage.getItem(storageKey) || "[]"
+          );
+          const completedChallenges = storedResults.length;
+          const totalChallenges = challengesResponse.data.data.length;
+          const progressPercentage =
+            totalChallenges > 0
+              ? (completedChallenges / totalChallenges) * 100
+              : 0;
+          const canEndContest =
+            completedChallenges >= totalChallenges && totalChallenges > 0;
+
+          setContestProgress({
+            totalChallenges,
+            completedChallenges,
+            progressPercentage,
+            canEndContest,
+          });
         }
       } catch (err) {
         setError("Network error occurred");
@@ -122,6 +149,84 @@ export default function ContestParticipatePage({
 
     return () => clearInterval(interval);
   }, [contest, contestId, router, hasRedirectedToResults]);
+
+  const handleEndContest = async () => {
+    try {
+      console.log("🏁 Ending contest...");
+
+      // Get results from localStorage
+      const storageKey = `contest_${contestId}_results`;
+      const storedResults = JSON.parse(
+        localStorage.getItem(storageKey) || "[]"
+      );
+
+      if (storedResults.length === 0) {
+        alert(
+          "No challenge results found. Please complete at least one challenge before ending the contest."
+        );
+        return;
+      }
+
+      console.log("📊 Stored results:", storedResults);
+
+      // Calculate total score
+      const totalScore = storedResults.reduce(
+        (sum: number, result: any) => sum + result.score,
+        0
+      );
+      const averageScore = totalScore / storedResults.length;
+
+      // Submit each challenge result to database
+      for (const result of storedResults) {
+        try {
+          const response = await apiService.submitContestSolution(
+            contestId,
+            result.challengeId,
+            result.code,
+            result.language,
+            "dummy-token",
+            {
+              passedTests: result.passedTests,
+              totalTests: result.totalTests,
+              successRate: result.successRate,
+              score: result.score,
+            }
+          );
+
+          if (!response.success) {
+            console.error(
+              `Failed to submit challenge ${result.challengeId}:`,
+              response.message
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Error submitting challenge ${result.challengeId}:`,
+            error
+          );
+        }
+      }
+
+      // Clear localStorage after successful submission
+      localStorage.removeItem(storageKey);
+
+      alert(
+        `Contest ended successfully!\n\nFinal Results:\n- Total Score: ${totalScore.toFixed(
+          2
+        )}\n- Average Score: ${averageScore.toFixed(
+          2
+        )}\n- Challenges Completed: ${
+          storedResults.length
+        }\n\nAll results have been submitted to the database.`
+      );
+
+      // Redirect to results page
+      router.push(`/contests/${contestId}/results`);
+    } catch (error) {
+      console.error("❌ Error ending contest:", error);
+      alert("Failed to end contest. Please try again.");
+    }
+  };
 
   if (loading) {
     return (
@@ -229,6 +334,46 @@ export default function ContestParticipatePage({
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Contest Progress */}
+        {contestProgress && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Your Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium">Progress</span>
+                  <span className="text-sm text-muted-foreground">
+                    {contestProgress.completedChallenges}/
+                    {contestProgress.totalChallenges} challenges completed
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${contestProgress.progressPercentage}%` }}
+                  ></div>
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  {contestProgress.progressPercentage.toFixed(1)}% complete
+                </div>
+
+                {contestProgress.canEndContest && (
+                  <div className="text-center pt-4">
+                    <Button
+                      onClick={handleEndContest}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      🏁 End Contest & Submit Results
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

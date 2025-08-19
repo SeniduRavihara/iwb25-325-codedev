@@ -130,7 +130,7 @@ public function getAllUsers() returns models:User[]|error {
 
 // Get all challenges
 public function getAllChallenges() returns models:Challenge[]|error {
-    io:println("DEBUG: Starting getAllChallenges query");
+    // io:println("DEBUG: Starting getAllChallenges query");
 
     // Use raw query first, then manually map to avoid type issues
     stream<record {}, sql:Error?> challengeStream =
@@ -139,11 +139,11 @@ public function getAllChallenges() returns models:Challenge[]|error {
     models:Challenge[] challenges = [];
     record {|record {} value;|}|error? result = challengeStream.next();
 
-    io:println("DEBUG: Got first result");
+    // io:println("DEBUG: Got first result");
 
     while result is record {|record {} value;|} {
         record {} rawChallenge = result.value;
-        io:println("DEBUG: Processing challenge: " + rawChallenge.toString());
+        // io:println("DEBUG: Processing challenge: " + rawChallenge.toString());
 
         // Manually create the Challenge record with proper type conversion
         models:Challenge challenge = {
@@ -167,13 +167,13 @@ public function getAllChallenges() returns models:Challenge[]|error {
 
     check challengeStream.close();
 
-    io:println("DEBUG: Returning " + challenges.length().toString() + " challenges");
+    // io:println("DEBUG: Returning " + challenges.length().toString() + " challenges");
     return challenges;
 }
 
 // Get all contests
 public function getAllContests() returns models:Contest[]|error {
-    io:println("DEBUG: Starting getAllContests with datetime conversion");
+    // io:println("DEBUG: Starting getAllContests with datetime conversion");
 
     // Convert DATETIME fields to strings in the SQL query
     stream<record {}, sql:Error?> contestStream =
@@ -202,7 +202,7 @@ public function getAllContests() returns models:Contest[]|error {
 
     check from record {} raw in contestStream
         do {
-            io:println("DEBUG: Raw contest: " + raw.toString());
+            // io:println("DEBUG: Raw contest: " + raw.toString());
 
             models:Contest contest = {
                 id: <int>raw["id"],
@@ -225,7 +225,7 @@ public function getAllContests() returns models:Contest[]|error {
             contests.push(contest);
         };
 
-    io:println("DEBUG: Returning " + contests.length().toString() + " contests");
+    // io:println("DEBUG: Returning " + contests.length().toString() + " contests");
     return contests;
 }
 
@@ -261,10 +261,10 @@ public function createChallenge(models:ChallengeCreate challengeData, int author
 // Create new contest
 public function createContest(models:ContestCreate contestData, int createdBy) returns sql:ExecutionResult|error {
     // Log the times being inserted for debugging
-    io:println("DEBUG: Creating contest with times:");
-    io:println("  Start time: " + contestData.start_time);
-    io:println("  End time: " + contestData.end_time);
-    io:println("  Registration deadline: " + contestData.registration_deadline);
+    // io:println("DEBUG: Creating contest with times:");
+    // io:println("  Start time: " + contestData.start_time);
+    // io:println("  End time: " + contestData.end_time);
+    // io:println("  Registration deadline: " + contestData.registration_deadline);
 
     return dbClient->execute(`
         INSERT INTO contests (title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at) 
@@ -277,7 +277,7 @@ public function createContest(models:ContestCreate contestData, int createdBy) r
 // Add this debug function that uses the EXACT same query as your main function
 
 public function debugSpecificContests() returns record {}[]|error {
-    io:println("DEBUG: Using exact same query as main function");
+    // io:println("DEBUG: Using exact same query as main function");
 
     stream<record {}, sql:Error?> contestStream =
         dbClient->query(`SELECT id, title, description, datetime(start_time) as start_time, datetime(end_time) as end_time, duration, status, max_participants, prizes, rules, created_by, datetime(registration_deadline) as registration_deadline, participants_count, datetime(created_at) as created_at, datetime(updated_at) as updated_at FROM contests ORDER BY created_at DESC`);
@@ -286,13 +286,13 @@ public function debugSpecificContests() returns record {}[]|error {
 
     record {|record {} value;|}|error? result = contestStream.next();
     while result is record {|record {} value;|} {
-        io:println("DEBUG: Found contest record: " + result.value.toString());
+        // io:println("DEBUG: Found contest record: " + result.value.toString());
         rawContests.push(result.value);
         result = contestStream.next();
     }
 
     check contestStream.close();
-    io:println("DEBUG: Total contests found: " + rawContests.length().toString());
+    // io:println("DEBUG: Total contests found: " + rawContests.length().toString());
     return rawContests;
 }
 
@@ -374,7 +374,7 @@ public function registerForContest(int contestId, int userId) returns sql:Execut
     }
 
     // Check if contest exists and registration is still open
-    io:println("DEBUG: Checking contest with ID: " + contestId.toString());
+    // io:println("DEBUG: Checking contest with ID: " + contestId.toString());
 
     stream<record {|string registration_deadline; int max_participants; int participants_count;|}, sql:Error?> contestStream =
         dbClient->query(`SELECT datetime(registration_deadline) as registration_deadline, max_participants, participants_count FROM contests WHERE id = ${contestId}`);
@@ -383,21 +383,21 @@ public function registerForContest(int contestId, int userId) returns sql:Execut
     error? closeResult = contestStream.close();
 
     if closeResult is error {
-        io:println("DEBUG: Error closing stream: " + closeResult.message());
+        // io:println("DEBUG: Error closing stream: " + closeResult.message());
         return closeResult;
     }
 
     if contestResult is () {
-        io:println("DEBUG: No contest found with ID: " + contestId.toString());
+        // io:println("DEBUG: No contest found with ID: " + contestId.toString());
         return error("Contest not found");
     }
 
     if contestResult is error {
-        io:println("DEBUG: Error getting contest result: " + contestResult.message());
+        // io:println("DEBUG: Error getting contest result: " + contestResult.message());
         return error("Contest not found");
     }
 
-    io:println("DEBUG: Contest found with registration deadline: " + contestResult.value.registration_deadline);
+    // io:println("DEBUG: Contest found with registration deadline: " + contestResult.value.registration_deadline);
 
     // Check if registration deadline has passed
     string registrationDeadline = contestResult.value.registration_deadline;
@@ -416,13 +416,13 @@ public function registerForContest(int contestId, int userId) returns sql:Execut
         isoDeadline = isoDeadline + "Z";
     }
 
-    io:println("DEBUG: Original deadline: " + registrationDeadline);
-    io:println("DEBUG: Converted deadline: " + isoDeadline);
+    // io:println("DEBUG: Original deadline: " + registrationDeadline);
+    // io:println("DEBUG: Converted deadline: " + isoDeadline);
 
     time:Utc|error deadlineTime = time:utcFromString(isoDeadline);
 
     if deadlineTime is error {
-        io:println("DEBUG: Failed to parse deadline: " + isoDeadline);
+        // io:println("DEBUG: Failed to parse deadline: " + isoDeadline);
         return error("Invalid registration deadline format: " + registrationDeadline);
     }
 
@@ -574,5 +574,218 @@ public function updateContestToActive(int contestId) returns error? {
     sql:ExecutionResult result = activeResult;
     io:println("🎯 DATABASE RESULT: Affected rows = " + result.affectedRowCount.toString());
 
+    return;
+}
+
+// Save contest submission using existing submissions table
+public function saveContestSubmission(
+        int userId,
+        int challengeId,
+        int contestId,
+        string code,
+        string language,
+        int passedTests,
+        int totalTests,
+        decimal successRate,
+        decimal score
+) returns error? {
+    // Calculate result status based on success rate with more nuanced categorization
+    string result;
+    if successRate >= 100.0d {
+        result = "accepted";
+    } else if successRate >= 80.0d {
+        result = "partial_correct";
+    } else if successRate > 0.0d {
+        result = "wrong_answer";
+    } else {
+        result = "compilation_error"; // or "runtime_error" depending on your needs
+    }
+
+    // Additional validation
+    if userId <= 0 || challengeId <= 0 || contestId <= 0 {
+        return error("Invalid ID parameters provided");
+    }
+
+    if code.length() == 0 {
+        return error("Code cannot be empty");
+    }
+
+    if language.length() == 0 {
+        return error("Language must be specified");
+    }
+
+    if totalTests < 0 || passedTests < 0 || passedTests > totalTests {
+        return error("Invalid test case counts");
+    }
+
+    // Log the submission attempt
+    io:println("Saving submission - User: " + userId.toString() +
+                ", Challenge: " + challengeId.toString() +
+                ", Contest: " + contestId.toString());
+    io:println("Results - Passed: " + passedTests.toString() +
+                "/" + totalTests.toString() +
+                " (" + successRate.toString() + "%) - " + result);
+
+    // First, check if a submission already exists
+    sql:ParameterizedQuery checkQuery = `
+        SELECT id FROM submissions 
+        WHERE user_id = ${userId} 
+        AND challenge_id = ${challengeId} 
+        AND contest_id = ${contestId}
+    `;
+    
+    stream<record {|int id;|}, error?> resultStream = dbClient->query(checkQuery);
+    record {|int id;|}? existingSubmission = ();
+    
+    // Check if record exists
+    record {|record {|int id;|} value;|}|error? first = resultStream.next();
+    if first is record {|record {|int id;|} value;|} {
+        existingSubmission = first.value;
+    }
+    
+    // Close the stream
+    error? closeResult = resultStream.close();
+    if closeResult is error {
+        io:println("Warning: Failed to close result stream: " + closeResult.message());
+    }
+
+    sql:ExecutionResult|error dbResult;
+    
+    if existingSubmission is record {|int id;|} {
+        // Update existing submission
+        io:println("Updating existing submission with ID: " + existingSubmission.id.toString());
+        
+        dbResult = dbClient->execute(`
+            UPDATE submissions SET
+                code = ${code},
+                language = ${language},
+                status = 'completed',
+                result = ${result},
+                score = ${score},
+                test_cases_passed = ${passedTests},
+                total_test_cases = ${totalTests},
+                submitted_at = CURRENT_TIMESTAMP
+            WHERE id = ${existingSubmission.id}
+        `);
+        
+        if dbResult is error {
+            io:println("❌ Database update failed: " + dbResult.message());
+            return error("Failed to update contest submission: " + dbResult.message());
+        }
+        
+        io:println("✓ Submission updated successfully");
+    } else {
+        // Insert new submission
+        io:println("Creating new submission");
+        
+        dbResult = dbClient->execute(`
+            INSERT INTO submissions (
+                user_id, challenge_id, contest_id, code, language, 
+                status, result, score, test_cases_passed, total_test_cases,
+                submitted_at
+            ) VALUES (
+                ${userId}, ${challengeId}, ${contestId}, ${code}, ${language},
+                'completed', ${result}, ${score}, ${passedTests}, ${totalTests},
+                CURRENT_TIMESTAMP
+            )
+        `);
+
+        if dbResult is error {
+            io:println("❌ Database insertion failed: " + dbResult.message());
+            return error("Failed to save contest submission: " + dbResult.message());
+        }
+        
+        io:println("✓ New submission created successfully");
+    }
+
+    return;
+}
+
+// Get user's contest progress from submissions table
+public function getUserContestProgress(int userId, int contestId) returns record {}[]|error {
+    stream<record {}, sql:Error?> resultStream = dbClient->query(`
+        SELECT 
+            s.challenge_id,
+            s.test_cases_passed as passed_tests,
+            s.total_test_cases as total_tests,
+            s.score,
+            s.result,
+            s.submitted_at,
+            c.title as challenge_title
+        FROM submissions s
+        JOIN challenges c ON s.challenge_id = c.id
+        WHERE s.user_id = ${userId} AND s.contest_id = ${contestId}
+        ORDER BY s.submitted_at
+    `);
+
+    record {}[] submissions = [];
+    record {|record {} value;|}|error? result = resultStream.next();
+
+    while result is record {|record {} value;|} {
+        submissions.push(result.value);
+        result = resultStream.next();
+    }
+
+    error? closeResult = resultStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    return submissions;
+}
+
+// Get challenges by contest ID
+public function getChallengesByContestId(int contestId) returns models:Challenge[]|error {
+    stream<record {}, sql:Error?> resultStream = dbClient->query(`
+        SELECT c.* FROM challenges c
+        JOIN contest_challenges cc ON c.id = cc.challenge_id
+        WHERE cc.contest_id = ${contestId}
+        ORDER BY c.id
+    `);
+    models:Challenge[] challenges = [];
+    record {|record {} value;|}|error? result = resultStream.next();
+
+    while result is record {|record {} value;|} {
+        // Convert record to Challenge model
+        models:Challenge challenge = {
+            id: 0,  // Placeholder, needs proper mapping
+            title: "",  // Placeholder
+            description: "",  // Placeholder
+            difficulty: "",  // Placeholder
+            tags: "",  // Placeholder
+            time_limit: 0,  // Placeholder
+            memory_limit: 0,  // Placeholder
+            success_rate: 0.0,  // Placeholder
+            author_id: 0,  // Added to model
+            submissions_count: 0,  // Added to model
+            created_at: "",  // Placeholder
+            updated_at: "" // Placeholder
+        };
+        // TODO: Properly map all fields from result.value to challenge
+        challenges.push(challenge);
+        result = resultStream.next();
+    }
+    error? closeResult = resultStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+    return challenges;
+}
+
+// Save contest result
+public function saveContestResult(int userId, int contestId, decimal totalScore, int totalChallenges) returns error? {
+    sql:ExecutionResult|error result = dbClient->execute(`
+        INSERT INTO contest_results (
+            user_id, contest_id, total_score, total_challenges, 
+            average_score, completed_at
+        ) VALUES (
+            ${userId}, ${contestId}, ${totalScore}, ${totalChallenges},
+            ${totalChallenges > 0 ? totalScore / <decimal>totalChallenges : 0.0},
+            CURRENT_TIMESTAMP
+        )
+    `);
+    if result is error {
+        return error("Failed to save contest result: " + result.message());
+    }
     return;
 }

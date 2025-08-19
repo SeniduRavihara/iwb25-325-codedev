@@ -1,28 +1,36 @@
 "use client";
 
-import type React from "react";
-
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from "@/components/rich-text-editor";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService } from "@/lib/api";
-import type { TestCase } from "@/lib/mock-data";
-import { Plus, Save, X } from "lucide-react";
+import { Plus, X, Code, Save } from 'lucide-react';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+
+interface TestCase {
+  id: string;
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+  points: number;
+}
+
+interface FunctionTemplate {
+  language: string;
+  functionName: string;
+  parameters: string[];
+  returnType: string;
+  starterCode: string;
+  executionTemplate: string;
+}
 
 export default function AddChallengePage() {
   const { isAuthenticated, user, token } = useAuth();
@@ -47,15 +55,134 @@ export default function AddChallengePage() {
     newTag: "",
   });
 
+  const [functionTemplates, setFunctionTemplates] = useState<FunctionTemplate[]>([]);
+
   const [testCases, setTestCases] = useState<TestCase[]>([
     { id: "1", input: "", expectedOutput: "", isHidden: false, points: 50 },
   ]);
 
+  const [currentTemplate, setCurrentTemplate] = useState<FunctionTemplate>({
+    language: "python",
+    functionName: "",
+    parameters: [],
+    returnType: "",
+    starterCode: "",
+    executionTemplate: ""
+  });
+
+  const [newParameter, setNewParameter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const addParameter = () => {
+    if (newParameter.trim() && !currentTemplate.parameters.includes(newParameter.trim())) {
+      setCurrentTemplate({
+        ...currentTemplate,
+        parameters: [...currentTemplate.parameters, newParameter.trim()]
+      });
+      setNewParameter("");
+    }
+  };
+
+  const removeParameter = (param: string) => {
+    setCurrentTemplate({
+      ...currentTemplate,
+      parameters: currentTemplate.parameters.filter(p => p !== param)
+    });
+  };
+
+  const generateStarterCode = () => {
+    const { language, functionName, parameters, returnType } = currentTemplate;
+    let code = "";
+    
+    switch (language) {
+      case "python":
+        code = `def ${functionName}(${parameters.join(", ")}):\n    # Write your solution here\n    pass`;
+        break;
+      case "javascript":
+        code = `function ${functionName}(${parameters.join(", ")}) {\n    // Write your solution here\n}`;
+        break;
+      case "java":
+        code = `public ${returnType} ${functionName}(${parameters.map(p => `int ${p}`).join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
+        break;
+      case "cpp":
+        code = `${returnType} ${functionName}(${parameters.map(p => `vector<int>& ${p}`).join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
+        break;
+    }
+    
+    setCurrentTemplate({ ...currentTemplate, starterCode: code });
+  };
+
+  const generateExecutionTemplate = () => {
+    const { language, functionName, parameters } = currentTemplate;
+    let template = "";
+    
+    switch (language) {
+      case "python":
+        if (parameters.length === 1) {
+          template = `# Execution template
+import json
+import sys
+
+${currentTemplate.starterCode}
+
+# Test execution wrapper
+input_line = sys.stdin.read().strip()
+${parameters[0]} = json.loads(input_line)
+result = ${functionName}(${parameters[0]})
+print(result)`;
+        } else {
+          template = `# Execution template
+import json
+import sys
+
+${currentTemplate.starterCode}
+
+# Test execution wrapper
+input_lines = sys.stdin.read().strip().split('\\n')
+${parameters.map((param, i) => `${param} = json.loads(input_lines[${i}])`).join('\n')}
+result = ${functionName}(${parameters.join(', ')})
+print(result)`;
+        }
+        break;
+      case "javascript":
+        template = `// Execution template
+${currentTemplate.starterCode}
+
+// Test execution wrapper
+const input = require('fs').readFileSync(0, 'utf8').trim();
+${parameters.length === 1 
+  ? `const ${parameters[0]} = JSON.parse(input);`
+  : parameters.map((param, i) => `const ${param} = JSON.parse(input.split('\\n')[${i}]);`).join('\n')
+}
+const result = ${functionName}(${parameters.join(', ')});
+console.log(result);`;
+        break;
+    }
+    
+    setCurrentTemplate({ ...currentTemplate, executionTemplate: template });
+  };
+
+  const addFunctionTemplate = () => {
+    if (currentTemplate.functionName && currentTemplate.parameters.length > 0) {
+      setFunctionTemplates([...functionTemplates, { ...currentTemplate }]);
+      setCurrentTemplate({
+        language: "python",
+        functionName: "",
+        parameters: [],
+        returnType: "",
+        starterCode: "",
+        executionTemplate: ""
+      });
+    }
+  };
+
+  const removeFunctionTemplate = (index: number) => {
+    setFunctionTemplates(functionTemplates.filter((_, i) => i !== index));
+  };
+
   const addTag = () => {
-    if (
-      formData.newTag.trim() &&
-      !formData.tags.includes(formData.newTag.trim())
-    ) {
+    if (formData.newTag.trim() && !formData.tags.includes(formData.newTag.trim())) {
       setFormData({
         ...formData,
         tags: [...formData.tags, formData.newTag.trim()],
@@ -82,14 +209,8 @@ export default function AddChallengePage() {
     setTestCases([...testCases, newTestCase]);
   };
 
-  const updateTestCase = (
-    id: string,
-    field: keyof TestCase,
-    value: string | number | boolean
-  ) => {
-    setTestCases(
-      testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc))
-    );
+  const updateTestCase = (id: string, field: keyof TestCase, value: string | number | boolean) => {
+    setTestCases(testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc)));
   };
 
   const removeTestCase = (id: string) => {
@@ -97,9 +218,6 @@ export default function AddChallengePage() {
       setTestCases(testCases.filter((tc) => tc.id !== id));
     }
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,27 +248,50 @@ export default function AddChallengePage() {
         setSubmitError("At least one tag is required");
         return;
       }
+      if (functionTemplates.length === 0) {
+        setSubmitError("At least one function template is required");
+        return;
+      }
+      if (testCases.length === 0) {
+        setSubmitError("At least one test case is required");
+        return;
+      }
+
+      // Validate test cases
+      for (const testCase of testCases) {
+        if (!testCase.input.trim()) {
+          setSubmitError("All test cases must have input");
+          return;
+        }
+        if (!testCase.expectedOutput.trim()) {
+          setSubmitError("All test cases must have expected output");
+          return;
+        }
+      }
+
+      console.log(JSON.stringify(functionTemplates));
+      
 
       // Prepare challenge data for API
       const challengeData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         difficulty: formData.difficulty,
-        tags: JSON.stringify(formData.tags), // Convert array to JSON string
+        tags: JSON.stringify(formData.tags),
         time_limit: formData.timeLimit * 60, // Convert minutes to seconds
         memory_limit: formData.memoryLimit,
+        function_templates: JSON.stringify(functionTemplates), // Add function templates
+        test_cases: JSON.stringify(testCases), // Add test cases
       };
 
       // Create challenge via API
-      const response = await apiService.createChallenge(challengeData, token);
+      // const response = await apiService.createChallenge(challengeData, token);
 
-      if (response.success) {
-        // TODO: Create test cases for the challenge
-        // For now, just redirect to challenges list with success message
-        router.push("/admin/challenges?success=true");
-      } else {
-        setSubmitError(response.message || "Failed to create challenge");
-      }
+      // if (response.success) {
+      //   router.push("/admin/challenges?success=true");
+      // } else {
+      //   setSubmitError(response.message || "Failed to create challenge");
+      // }
     } catch (err) {
       console.error("Error creating challenge:", err);
       setSubmitError("Network error occurred");
@@ -177,14 +318,14 @@ export default function AddChallengePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground">
               Add New Challenge
             </h1>
             <p className="text-muted-foreground mt-2">
-              Create a new coding challenge for the platform
+              Create a new coding challenge with function templates and test cases
             </p>
           </div>
           <Button variant="outline" asChild>
@@ -317,6 +458,166 @@ export default function AddChallengePage() {
             </CardContent>
           </Card>
 
+          {/* Function Template Builder */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                Function Template Builder
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Define the function signature that users must implement
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Language</Label>
+                  <Select 
+                    value={currentTemplate.language} 
+                    onValueChange={(value) => setCurrentTemplate({ ...currentTemplate, language: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="python">Python</SelectItem>
+                      <SelectItem value="javascript">JavaScript</SelectItem>
+                      <SelectItem value="java">Java</SelectItem>
+                      <SelectItem value="cpp">C++</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Function Name</Label>
+                  <Input
+                    value={currentTemplate.functionName}
+                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, functionName: e.target.value })}
+                    placeholder="max_subarray_sum"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Return Type</Label>
+                  <Input
+                    value={currentTemplate.returnType}
+                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, returnType: e.target.value })}
+                    placeholder="int, List[int], etc."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Parameters</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newParameter}
+                    onChange={(e) => setNewParameter(e.target.value)}
+                    placeholder="nums, target, etc."
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addParameter())}
+                  />
+                  <Button type="button" onClick={addParameter} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {currentTemplate.parameters.map((param) => (
+                    <Badge key={param} variant="outline" className="flex items-center gap-1">
+                      {param}
+                      <button 
+                        type="button"
+                        onClick={() => removeParameter(param)} 
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="button" onClick={generateStarterCode} variant="outline">
+                  Generate Starter Code
+                </Button>
+                <Button type="button" onClick={generateExecutionTemplate} variant="outline">
+                  Generate Execution Template
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Starter Code (What users see)</Label>
+                  <Textarea
+                    value={currentTemplate.starterCode}
+                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, starterCode: e.target.value })}
+                    placeholder="def max_subarray_sum(nums):\n    # Write your solution here\n    pass"
+                    rows={8}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Execution Template (Hidden from users)</Label>
+                  <Textarea
+                    value={currentTemplate.executionTemplate}
+                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, executionTemplate: e.target.value })}
+                    placeholder="Code that wraps user function with test case injection..."
+                    rows={8}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="button" 
+                onClick={addFunctionTemplate} 
+                className="w-full"
+                disabled={!currentTemplate.functionName || currentTemplate.parameters.length === 0}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Function Template
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Added Templates Display */}
+          {functionTemplates.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Function Templates ({functionTemplates.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {functionTemplates.map((template, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h4 className="font-medium">{template.language} - {template.functionName}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Parameters: {template.parameters.join(', ')} | Returns: {template.returnType}
+                          </p>
+                        </div>
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => removeFunctionTemplate(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="bg-muted p-3 rounded font-mono text-sm">
+                        <pre>{template.starterCode}</pre>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Test Cases */}
           <Card>
             <CardHeader>
@@ -330,10 +631,7 @@ export default function AddChallengePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {testCases.map((testCase, index) => (
-                <div
-                  key={testCase.id}
-                  className="border border-border rounded-lg p-4"
-                >
+                <div key={testCase.id} className="border border-border rounded-lg p-4">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-medium">Test Case {index + 1}</h4>
                     <div className="flex items-center gap-2">
@@ -363,14 +661,15 @@ export default function AddChallengePage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Input</Label>
+                      <Label>Input (JSON format)</Label>
                       <Textarea
                         value={testCase.input}
                         onChange={(e) =>
                           updateTestCase(testCase.id, "input", e.target.value)
                         }
-                        placeholder="Enter test case input"
+                        placeholder='[-2,1,-3,4,-1,2,1,-5,4]'
                         rows={4}
+                        className="font-mono"
                       />
                     </div>
                     <div className="space-y-2">
@@ -384,8 +683,9 @@ export default function AddChallengePage() {
                             e.target.value
                           )
                         }
-                        placeholder="Enter expected output"
+                        placeholder="6"
                         rows={4}
+                        className="font-mono"
                       />
                     </div>
                   </div>

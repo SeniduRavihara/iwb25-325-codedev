@@ -15,7 +15,7 @@ public function createSubmissionsTable(jdbc:Client dbClient) returns error? {
             code TEXT NOT NULL,
             language TEXT NOT NULL,
             status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) DEFAULT 'pending',
-            result TEXT CHECK(result IN ('accepted', 'wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'runtime_error', 'compilation_error')) DEFAULT 'pending',
+            result TEXT CHECK(result IN ('accepted', 'wrong_answer', 'time_limit_exceeded', 'memory_limit_exceeded', 'runtime_error', 'compilation_error', 'partial_correct')) DEFAULT 'pending',
             score INTEGER DEFAULT 0,
             execution_time INTEGER, -- in milliseconds
             memory_used INTEGER, -- in KB
@@ -25,7 +25,8 @@ public function createSubmissionsTable(jdbc:Client dbClient) returns error? {
             submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (challenge_id) REFERENCES challenges(id) ON DELETE CASCADE,
-            FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE SET NULL
+            FOREIGN KEY (contest_id) REFERENCES contests(id) ON DELETE SET NULL,
+            UNIQUE(user_id, challenge_id, contest_id)
         )
     `);
 

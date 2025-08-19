@@ -23,9 +23,30 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   loading: () => <div className="h-96 bg-muted animate-pulse rounded-md" />,
 }) as any;
 
+interface FunctionTemplate {
+  language: string;
+  functionName: string;
+  parameters: string[];
+  returnType: string;
+  starterCode: string;
+  executionTemplate: string;
+}
+
 interface CodeEditorProps {
   testCases: TestCase[];
-  onSubmit: (code: string, language: string) => void;
+  challengeId?: number; // Add challengeId prop
+  contestId?: number; // Add contestId prop
+  functionTemplates?: FunctionTemplate[]; // Add function templates prop
+  onSubmit: (
+    code: string,
+    language: string,
+    results?: {
+      passedTests: number;
+      totalTests: number;
+      successRate: number;
+      score: number;
+    }
+  ) => void;
   initialCode?: string;
   initialLanguage?: string;
 }
@@ -64,25 +85,44 @@ const languageExtensions = {
 
 export function CodeEditor({
   testCases,
+  challengeId,
+  contestId,
+  functionTemplates = [], // Default to empty array
   onSubmit,
   initialCode,
   initialLanguage = "python",
 }: CodeEditorProps) {
   // Only log on mount or when testCases change significantly
-  useEffect(() => {
-    console.log("🎨 CodeEditor component received props:", {
-      testCasesCount: testCases?.length || 0,
-      testCases: testCases,
-      initialLanguage,
-      hasOnSubmit: !!onSubmit,
-    });
-  }, [testCases?.length]); // Only log when testCases count changes
+  // Remove the console.log to clean up the output
 
-  const [code, setCode] = useState(
-    initialCode ||
-      languageTemplates[initialLanguage as keyof typeof languageTemplates]
-  );
+  // console.log("RAVII", functionTemplates);
+
+  // Get initial code from function template if available, otherwise use language template
+  const getInitialCode = () => {
+    if (initialCode) return initialCode;
+
+    // Check if there's a function template for the initial language
+    const template = functionTemplates.find(
+      (t) => t.language === initialLanguage
+    );
+    if (template) {
+      return template.starterCode;
+    }
+
+    // Fallback to language template
+    return languageTemplates[initialLanguage as keyof typeof languageTemplates];
+  };
+
+  const [code, setCode] = useState(getInitialCode());
   const [language, setLanguage] = useState(initialLanguage);
+
+  // Update code when function templates change (only on initial load)
+  useEffect(() => {
+    const template = functionTemplates.find((t) => t.language === language);
+    if (template && !initialCode && functionTemplates.length > 0) {
+      setCode(template.starterCode);
+    }
+  }, [functionTemplates.length]); // Only run when functionTemplates array length changes (initial load)
   const [isRunning, setIsRunning] = useState(false);
   const [executionResult, setExecutionResult] =
     useState<CodeExecutionResponse | null>(null);
@@ -90,16 +130,6 @@ export function CodeEditor({
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
-
-  // Log when testCases prop changes
-  useEffect(() => {
-    if (testCases && testCases.length > 0) {
-      console.log("🔄 CodeEditor testCases prop changed:", {
-        count: testCases.length,
-        testCases: testCases,
-      });
-    }
-  }, [testCases]);
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor;
@@ -128,7 +158,15 @@ export function CodeEditor({
 
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage);
-    setCode(languageTemplates[newLanguage as keyof typeof languageTemplates]);
+
+    // Check if there's a function template for the new language
+    const template = functionTemplates.find((t) => t.language === newLanguage);
+    if (template) {
+      setCode(template.starterCode);
+    } else {
+      setCode(languageTemplates[newLanguage as keyof typeof languageTemplates]);
+    }
+
     setExecutionResult(null);
     setTestResults([]);
     setShowResults(false);
@@ -136,13 +174,7 @@ export function CodeEditor({
   };
 
   const runCode = async () => {
-    console.log("🚀 runCode called with:");
-    console.log("📝 Code length:", code.length);
-    console.log("🔤 Language:", language);
-    console.log("🧪 Available test cases:", testCases?.length || 0);
-
     if (!code.trim()) {
-      console.log("❌ No code to run");
       setError("Please enter some code to run");
       return;
     }
@@ -155,17 +187,13 @@ export function CodeEditor({
     setTestResults([]);
 
     try {
-      console.log("📡 Calling API to execute code...");
       // First, run the code to see if it compiles/executes
       const response = await apiService.executeCode({
         code: code.trim(),
         language: language,
       });
 
-      console.log("📊 Code execution response:", response);
-
       if (response.success && response.data) {
-        console.log("✅ Code execution successful:", response.data);
         setExecutionResult(response.data);
 
         // Now run against test cases
@@ -182,47 +210,30 @@ export function CodeEditor({
   };
 
   const runTestCases = async () => {
-    console.log("🧪 runTestCases called");
-    console.log("📊 Total test cases:", testCases?.length || 0);
-
     const visibleTestCases = testCases.filter((tc) => !tc.isHidden);
     console.log("👁️ Visible test cases:", visibleTestCases.length);
+
+    console.log("SENIDU");
 
     const results: TestResult[] = [];
 
     for (let i = 0; i < visibleTestCases.length; i++) {
       const testCase = visibleTestCases[i];
-      console.log(`🧪 Running test case ${i + 1}:`, {
-        input: testCase.input,
-        expected: testCase.expectedOutput,
-        hidden: testCase.isHidden,
-      });
-
       try {
         // Create test code that includes the input
         const testCode = createTestCode(code, testCase.input, language);
-        console.log(
-          `📝 Test code for case ${i + 1}:`,
-          testCode.substring(0, 100) + "..."
-        );
 
         const response = await apiService.executeCode({
           code: testCode,
           language: language,
         });
 
-        console.log(`📊 Test case ${i + 1} response:`, response);
+        // console.log(`📊 Test case ${i + 1} response:`, response);
 
         if (response.success && response.data) {
           const actualOutput = response.data.output?.trim() || "";
           const expectedOutput = testCase.expectedOutput.trim();
           const status = actualOutput === expectedOutput ? "passed" : "failed";
-
-          console.log(`✅ Test case ${i + 1} result:`, {
-            actual: actualOutput,
-            expected: expectedOutput,
-            status: status,
-          });
 
           results.push({
             testCase,
@@ -232,7 +243,7 @@ export function CodeEditor({
             executionTime: response.data.executionTime?.milliseconds || 0,
           });
         } else {
-          console.log(`❌ Test case ${i + 1} failed:`, response.message);
+          // console.log(`❌ Test case ${i + 1} failed:`, response.message);
           results.push({
             testCase,
             index: i + 1,
@@ -243,7 +254,7 @@ export function CodeEditor({
           });
         }
       } catch (err) {
-        console.log(`❌ Test case ${i + 1} error:`, err);
+        // console.log(`❌ Test case ${i + 1} error:`, err);
         results.push({
           testCase,
           index: i + 1,
@@ -255,7 +266,7 @@ export function CodeEditor({
       }
     }
 
-    console.log("🏁 All test cases completed:", results);
+    // console.log("🏁 All test cases completed:", results);
     setTestResults(results);
   };
 
@@ -264,22 +275,250 @@ export function CodeEditor({
     input: string,
     lang: string
   ): string => {
-    // For now, let's just return the user code as-is
-    // The user should write code that handles the specific test case
-    // This avoids adding extra output that interferes with the result
-    return userCode;
+    // Find the function template for the current language
+    const template = functionTemplates.find((t) => t.language === lang);
+    console.log("TEMPLATE", template);
+
+    if (!template) {
+      // Fallback: return user code as-is if no template found
+      return userCode;
+    }
+
+    try {
+      // Start with the execution template
+      let executionCode = template.executionTemplate;
+
+      // Debug: Log the replacement process
+      console.log("🔧 REPLACEMENT DEBUG:");
+      console.log(
+        "Template starter code:",
+        JSON.stringify(template.starterCode)
+      );
+      console.log("User code:", JSON.stringify(userCode));
+      console.log("Execution template before replacement:", executionCode);
+
+      // Replace the placeholder function in execution template with user's complete function
+      const placeholderInExecution = template.starterCode;
+
+      // Normalize line endings and whitespace for better matching
+      const normalizedPlaceholder = placeholderInExecution
+        .replace(/\r\n/g, "\n")
+        .trim();
+      const normalizedUserCode = userCode.replace(/\r\n/g, "\n").trim();
+      const normalizedExecutionCode = executionCode.replace(/\r\n/g, "\n");
+
+      // For Java, replace the specific function within the class
+      if (lang === "java") {
+        // Find the function signature and replace the entire function
+        const functionSignature = `public static int ${template.functionName}\\(int\\[\\] ${template.parameters[0]}\\)`;
+        const functionRegex = new RegExp(
+          `${functionSignature}\\s*\\{[^}]*\\}`,
+          "s"
+        );
+
+        if (functionRegex.test(normalizedExecutionCode)) {
+          executionCode = normalizedExecutionCode.replace(
+            functionRegex,
+            normalizedUserCode
+          );
+          console.log("✅ Java function replacement successful");
+        } else {
+          console.log(
+            "❌ Java function replacement failed - function not found"
+          );
+        }
+      } else {
+        // For other languages, try the original approach
+        if (normalizedExecutionCode.includes(normalizedPlaceholder)) {
+          executionCode = normalizedExecutionCode.replace(
+            normalizedPlaceholder,
+            normalizedUserCode
+          );
+          console.log("✅ Exact replacement successful");
+        } else {
+          // Try more flexible replacement
+          const escapedPlaceholder = normalizedPlaceholder.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+          const regex = new RegExp(escapedPlaceholder, "g");
+          if (regex.test(normalizedExecutionCode)) {
+            executionCode = normalizedExecutionCode.replace(
+              regex,
+              normalizedUserCode
+            );
+            console.log("✅ Regex replacement successful");
+          } else {
+            console.log("❌ Replacement failed - placeholder not found");
+            console.log(
+              "Available content in execution template:",
+              normalizedExecutionCode
+            );
+          }
+        }
+      }
+
+      console.log("Execution template after replacement:", executionCode);
+
+      // Inject the test case input as function parameters based on language
+      if (lang === "python") {
+        // Python-specific input injection
+        if (template.parameters.length === 1) {
+          const inputInjectionPattern =
+            /input_lines = sys\.stdin\.read\(\)\.strip\(\)\.split\('\\n'\)/;
+          const parameterAssignment = `${template.parameters[0]} = json.loads('${input}')`;
+
+          if (
+            executionCode.includes(
+              "input_lines = sys.stdin.read().strip().split('\\n')"
+            )
+          ) {
+            executionCode = executionCode.replace(
+              inputInjectionPattern,
+              parameterAssignment
+            );
+          } else {
+            // If the pattern is not found, try to find and replace any existing parameter assignment
+            const existingPattern = new RegExp(
+              `${template.parameters[0]} = json\\.loads\\('[^']*'\\)`
+            );
+            if (existingPattern.test(executionCode)) {
+              executionCode = executionCode.replace(
+                existingPattern,
+                parameterAssignment
+              );
+            } else {
+              // Add the parameter assignment before the function call
+              const functionCallPattern = new RegExp(
+                `result = ${template.functionName}\\([^)]*\\)`
+              );
+              executionCode = executionCode.replace(
+                functionCallPattern,
+                `${parameterAssignment}\n$&`
+              );
+            }
+          }
+        }
+      } else if (lang === "java") {
+        // Java-specific input injection
+        if (template.parameters.length === 1) {
+          // Replace the placeholder JSON with actual test input
+          const inputInjectionPattern = /String input = "\\[1,2,3\\]";/;
+          const parameterAssignment = `String input = "${input}";`;
+
+          if (inputInjectionPattern.test(executionCode)) {
+            executionCode = executionCode.replace(
+              inputInjectionPattern,
+              parameterAssignment
+            );
+          } else {
+            // Try to find existing assignment
+            const existingPattern = new RegExp(`String input = "[^"]*";`);
+            if (existingPattern.test(executionCode)) {
+              executionCode = executionCode.replace(
+                existingPattern,
+                parameterAssignment
+              );
+            }
+          }
+        }
+      } else if (lang === "ballerina") {
+        // Ballerina-specific input injection
+        if (template.parameters.length === 1) {
+          // Replace the hardcoded array with actual test input
+          const inputInjectionPattern = /int\\[\\] nums = \\[1, 2, 3\\];/;
+
+          // Parse the JSON input and convert to Ballerina array format
+          try {
+            const jsonArray = JSON.parse(input);
+            const ballerinaArray = jsonArray.join(", ");
+            const parameterAssignment = `int[] nums = [${ballerinaArray}];`;
+
+            if (inputInjectionPattern.test(executionCode)) {
+              executionCode = executionCode.replace(
+                inputInjectionPattern,
+                parameterAssignment
+              );
+            } else {
+              // Try to find existing assignment
+              const existingPattern = new RegExp(
+                `int\\[\\] nums = \\[[^\\]]*\\];`
+              );
+              if (existingPattern.test(executionCode)) {
+                executionCode = executionCode.replace(
+                  existingPattern,
+                  parameterAssignment
+                );
+              }
+            }
+          } catch (e) {
+            console.log("Failed to parse input for Ballerina:", e);
+          }
+        }
+      }
+
+      console.log("TEMPLATE", executionCode);
+
+      return executionCode;
+    } catch (error) {
+      console.error("Error creating test code:", error);
+      // Fallback to user code if template processing fails
+      return userCode;
+    }
   };
 
-  const submitCode = () => {
-    console.log("📤 submitCode called");
-    console.log("📝 Submitting code:", code.substring(0, 100) + "...");
-    console.log("🔤 Language:", language);
-    console.log("🧪 Test cases available:", testCases?.length || 0);
-    onSubmit(code, language);
+  const submitCode = async () => {
+    await runCode();
+
+    // Calculate score based on test results
+    if (testResults.length > 0 && testCases) {
+      const passedTests = testResults.filter(
+        (result) => result.status === "passed"
+      ).length;
+      const totalTests = testCases.length;
+      const successRate = totalTests > 0 ? passedTests / totalTests : 0;
+
+      // Calculate score: (passed tests / total tests) * 100
+      const score = successRate * 100;
+
+      // Store result in localStorage instead of submitting to backend
+      // const challengeResult = {
+      //   challengeId: challengeId || 0,
+      //   code,
+      //   language,
+      //   passedTests,
+      //   totalTests,
+      //   successRate,
+      //   score,
+      //   submittedAt: new Date().toISOString(),
+      // };
+
+      // Call onSubmit with the result (for UI feedback)
+      onSubmit(code, language, {
+        passedTests,
+        totalTests,
+        successRate,
+        score,
+      });
+    } else {
+      // Fallback if no results
+      onSubmit(code, language, {
+        passedTests: 0,
+        totalTests: testCases?.length || 0,
+        successRate: 0,
+        score: 0,
+      });
+    }
   };
 
   const resetCode = () => {
-    setCode(languageTemplates[language as keyof typeof languageTemplates]);
+    // Check if there's a function template for the current language
+    const template = functionTemplates.find((t) => t.language === language);
+    if (template) {
+      setCode(template.starterCode);
+    } else {
+      setCode(languageTemplates[language as keyof typeof languageTemplates]);
+    }
     setExecutionResult(null);
     setTestResults([]);
     setShowResults(false);

@@ -445,14 +445,14 @@ service / on new http:Listener(serverPort) {
 
     // Get all challenges (public)
     resource function get challenges(http:Caller caller, http:Request req) returns error? {
-        io:println("DEBUG: Starting challenges endpoint");
+        // io:println("DEBUG: Starting challenges endpoint");
 
         models:Challenge[]|error challenges = database:getAllChallenges();
-        io:println("DEBUG: Database call completed");
+        // io:println("DEBUG: Database call completed");
 
         if challenges is error {
-            io:println("DEBUG: Error from database: " + challenges.message());
-            io:println("DEBUG: Error details: " + challenges.toString());
+            // io:println("DEBUG: Error from database: " + challenges.message());
+            // io:println("DEBUG: Error details: " + challenges.toString());
 
             http:Response response = new;
             response.statusCode = 500;
@@ -465,11 +465,11 @@ service / on new http:Listener(serverPort) {
             return;
         }
 
-        io:println("DEBUG: Successfully got " + challenges.length().toString() + " challenges");
+        // io:println("DEBUG: Successfully got " + challenges.length().toString() + " challenges");
 
         // Log first challenge for debugging (if exists)
         if challenges.length() > 0 {
-            io:println("DEBUG: First challenge title: " + challenges[0].title);
+            // io:println("DEBUG: First challenge title: " + challenges[0].title);
         }
 
         http:Response response = new;
@@ -480,7 +480,7 @@ service / on new http:Listener(serverPort) {
             "count": challenges.length()
         });
 
-        io:println("DEBUG: Sending response with " + challenges.length().toString() + " challenges");
+        // io:println("DEBUG: Sending response with " + challenges.length().toString() + " challenges");
         check caller->respond(response);
     }
 
@@ -1263,6 +1263,186 @@ service / on new http:Listener(serverPort) {
                 }
             });
         }
+        check caller->respond(response);
+    }
+
+    // Submit solution for a contest challenge
+    resource function post contests/[int contestId]/challenges/[int challengeId]/submit(http:Caller caller, http:Request req) returns error? {
+        // Parse request body
+        json requestBody = check req.getJsonPayload();
+        string code = check requestBody.code;
+        string language = check requestBody.language;
+        // string token = check requestBody.token;
+
+        io:println("🔥 API CALLED: POST /contests/" + contestId.toString() + "/challenges/" + challengeId.toString() + "/submit");
+        io:println("🔥 CODE: " + code);
+        io:println("🔥 LANGUAGE: " + language);
+
+        // Parse frontend-calculated results properly
+        int passedTests = 0;
+        int totalTests = 0;
+        decimal successRate = 0.0;
+        decimal score = 0.0;
+
+        // Extract frontend results from request body
+        passedTests = check requestBody.passedTests;
+        totalTests = check requestBody.totalTests;
+        successRate = check requestBody.successRate;
+        score = check requestBody.score;
+
+        io:println("📊 Test Results - Passed: " + passedTests.toString() + "/" + totalTests.toString() +
+                " (" + successRate.toString() + "%) - Score: " + score.toString());
+
+        // For now, use default user ID to avoid JWT import issues
+        int userId = 1;
+
+        // Save submission to database
+        error? saveResult = database:saveContestSubmission(
+                userId,
+                challengeId,
+                contestId,
+                code,
+                language,
+                passedTests,
+                totalTests,
+                successRate,
+                score
+        );
+
+        if saveResult is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to save submission: " + saveResult.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": {
+                "passedTests": passedTests,
+                "totalTests": totalTests,
+                "successRate": successRate,
+                "score": score,
+                "message": "Solution submitted successfully"
+            }
+        });
+        check caller->respond(response);
+    }
+
+    // Get user's contest progress
+    resource function get contests/[int contestId]/progress(http:Caller caller, http:Request req) returns error? {
+        // Get user ID from query params for now
+        int userId = 1; // Default user ID for now
+
+        // Get user's submissions for this contest
+        record {}[]|error submissions = database:getUserContestProgress(userId, contestId);
+
+        if submissions is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to get progress: " + submissions.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Get all challenges for this contest
+        models:Challenge[]|error challenges = database:getChallengesByContestId(contestId);
+
+        if challenges is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to get challenges: " + challenges.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Calculate progress
+        int totalChallenges = challenges.length();
+        int completedChallenges = submissions.length();
+        decimal progressPercentage = totalChallenges > 0 ? <decimal>completedChallenges / <decimal>totalChallenges * 100.0 : 0.0;
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": {
+                "totalChallenges": totalChallenges,
+                "completedChallenges": completedChallenges,
+                "progressPercentage": progressPercentage,
+                "submissions": [],
+                "canEndContest": completedChallenges >= totalChallenges
+            }
+        });
+        check caller->respond(response);
+    }
+
+    // End contest and calculate final results
+    resource function post contests/[int contestId]/end(http:Caller caller, http:Request req) returns error? {
+        // Get user ID from query params for now
+        int userId = 1; // Default user ID for now
+
+        // Get user's submissions for this contest
+        record {}[]|error submissions = database:getUserContestProgress(userId, contestId);
+
+        if submissions is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to get submissions: " + submissions.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Calculate total score
+        decimal totalScore = 0.0;
+        int totalChallenges = 0;
+
+        // foreach record {} submission in submissions {
+        //     // Extract score from submission record
+        //     // For now, assume score is available in the record
+        //     totalScore += 0.0d; // TODO: Extract actual score
+        //     totalChallenges += 1;
+        // }
+
+        // Save final contest result
+        error? saveResult = database:saveContestResult(userId, contestId, totalScore, totalChallenges);
+
+        if saveResult is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to save contest result: " + saveResult.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": {
+                "totalScore": totalScore,
+                "totalChallenges": totalChallenges,
+                "averageScore": totalChallenges > 0 ? totalScore / <decimal>totalChallenges : 0.0,
+                "message": "Contest ended successfully"
+            }
+        });
         check caller->respond(response);
     }
 }

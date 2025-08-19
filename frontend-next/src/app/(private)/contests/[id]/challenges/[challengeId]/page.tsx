@@ -11,7 +11,7 @@ import { type TestCase } from "@/lib/mock-data";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 
 export default function ContestChallengePage({
   params,
@@ -20,8 +20,11 @@ export default function ContestChallengePage({
 }) {
   const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
+
   const [contest, setContest] = useState<Contest | null>(null);
   const [challenge, setChallenge] = useState<Challenge | null>(null);
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<{
@@ -29,7 +32,72 @@ export default function ContestChallengePage({
     minutes: number;
     seconds: number;
   } | null>(null);
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
+
+  // Sample function templates for testing
+  const sampleFunctionTemplates = [
+    {
+      language: "python",
+      functionName: "max_subarray_sum",
+      parameters: ["nums"],
+      returnType: "int",
+      starterCode:
+        "def max_subarray_sum(nums):\n    # Write your solution here\n    pass",
+      executionTemplate:
+        "# Execution template\nimport json\nimport sys\n\ndef max_subarray_sum(nums):\n    # Write your solution here\n    pass\n\n# Test execution wrapper\ninput_lines = sys.stdin.read().strip().split('\\n')\n\nresult = max_subarray_sum(nums)\nprint(result)",
+    },
+    {
+      language: "java",
+      functionName: "maxSubarraySum",
+      parameters: ["nums"],
+      returnType: "int",
+      starterCode:
+        "public static int maxSubarraySum(int[] nums) {\n    // Write your solution here\n    return 0;\n}",
+      executionTemplate:
+        'import java.util.*;\n\npublic class Main {\n    public static int maxSubarraySum(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n    \n    public static void main(String[] args) {\n        try {\n            // Parse input array from string like "[1,2,3]"\n            String input = "[1,2,3]";\n            input = input.substring(1, input.length() - 1); // Remove [ and ]\n            String[] parts = input.split(",");\n            int[] nums = new int[parts.length];\n            for (int i = 0; i < parts.length; i++) {\n                nums[i] = Integer.parseInt(parts[i].trim());\n            }\n            \n            int result = maxSubarraySum(nums);\n            System.out.println(result);\n        } catch (Exception e) {\n            System.err.println("Error: " + e.getMessage());\n        }\n    }\n}',
+    },
+    {
+      language: "ballerina",
+      functionName: "maxSubarraySum",
+      parameters: ["nums"],
+      returnType: "int",
+      starterCode:
+        "public function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}",
+      executionTemplate:
+        "import ballerina/io;\n\npublic function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}\n\npublic function main() returns error? {\n    // Simple test with hardcoded array\n    int[] nums = [1, 2, 3];\n    int result = maxSubarraySum(nums);\n    io:println(result);\n}",
+    },
+  ];
+
+  // Sample test cases for testing
+  const sampleTestCases: TestCase[] = [
+    {
+      id: "1",
+      input: "[-2,1,-3,4,-1,2,1,-5,4]",
+      expectedOutput: "6",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "2",
+      input: "[-1,-2,-3,-4]",
+      expectedOutput: "-1",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "3",
+      input: "[1,2,3,4,5]",
+      expectedOutput: "15",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "4",
+      input: "[5]",
+      expectedOutput: "5",
+      isHidden: false,
+      points: 25,
+    },
+  ];
 
   const resolvedParams = use(params);
   const contestId = parseInt(resolvedParams.id);
@@ -37,24 +105,13 @@ export default function ContestChallengePage({
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log(
-        "🔄 Starting fetchData for contest:",
-        contestId,
-        "challenge:",
-        challengeId
-      );
-
       if (!isAuthenticated) {
-        console.log("❌ User not authenticated, redirecting to login");
         router.push("/login");
         return;
       }
 
       try {
-        console.log("📡 Fetching contest details...");
-        // Fetch contest details
         const contestResponse = await apiService.getContests();
-        console.log("📊 Contest response:", contestResponse);
 
         if (
           contestResponse.success &&
@@ -64,30 +121,16 @@ export default function ContestChallengePage({
           const foundContest = contestResponse.data.data.find(
             (c: Contest) => c.id === contestId
           );
-          console.log("🎯 Found contest:", foundContest);
 
           if (foundContest) {
             setContest(foundContest);
-            console.log(
-              "✅ Contest set:",
-              foundContest.title,
-              "Status:",
-              foundContest.status
-            );
 
-            // Check if contest is active
             if (foundContest.status !== "active") {
-              console.log(
-                "⚠️ Contest not active, attempting to update status..."
-              );
-              // Try to update contest status first
               try {
                 await apiService.updateContestStatus(contestId);
-                console.log("🔄 Contest status updated, refreshing data...");
 
                 // Refresh contest data after status update
                 const refreshResponse = await apiService.getContests();
-                console.log("📊 Refresh response:", refreshResponse);
 
                 if (
                   refreshResponse.success &&
@@ -97,14 +140,12 @@ export default function ContestChallengePage({
                   const refreshedContest = refreshResponse.data.data.find(
                     (c: Contest) => c.id === contestId
                   );
-                  console.log("🔄 Refreshed contest:", refreshedContest);
 
                   if (
                     refreshedContest &&
                     refreshedContest.status === "active"
                   ) {
                     setContest(refreshedContest);
-                    console.log("✅ Contest now active, continuing...");
                     return; // Continue with the active contest
                   }
                 }
@@ -112,24 +153,17 @@ export default function ContestChallengePage({
                 console.error("❌ Failed to update contest status:", error);
               }
 
-              console.log("❌ Contest still not active, showing error");
               setError("This contest is not active yet");
               return;
             } else {
-              console.log("✅ Contest is already active");
             }
           } else {
-            console.log("❌ Contest not found");
             setError("Contest not found");
           }
         } else {
-          console.log("❌ Failed to fetch contests:", contestResponse);
         }
-
-        console.log("📡 Fetching challenge details...");
         // Fetch challenge details
         const challengesResponse = await apiService.getChallenges();
-        console.log("📊 Challenges response:", challengesResponse);
 
         if (
           challengesResponse.success &&
@@ -139,31 +173,20 @@ export default function ContestChallengePage({
           const foundChallenge = challengesResponse.data.data.find(
             (c: Challenge) => c.id === challengeId
           );
-          console.log("🎯 Found challenge:", foundChallenge);
 
           if (foundChallenge) {
             setChallenge(foundChallenge);
-            console.log("✅ Challenge set:", foundChallenge.title);
 
-            // Fetch test cases for this challenge
-            console.log("📡 Fetching test cases for challenge:", challengeId);
             try {
               const testCasesResponse = await apiService.getTestCases(
                 challengeId
               );
-              console.log("📊 Test cases response:", testCasesResponse);
 
               if (
                 testCasesResponse.success &&
                 testCasesResponse.data &&
                 testCasesResponse.data.data
               ) {
-                console.log(
-                  "✅ Test cases loaded:",
-                  testCasesResponse.data.data.length,
-                  "test cases"
-                );
-
                 // Map API response to expected format
                 const mappedTestCases = testCasesResponse.data.data.map(
                   (apiTestCase: any) => ({
@@ -175,37 +198,25 @@ export default function ContestChallengePage({
                   })
                 );
 
-                console.log("🔄 Mapped test cases:", mappedTestCases);
                 setTestCases(mappedTestCases);
-
-                // Log each test case
-                mappedTestCases.forEach((testCase: any, index: number) => {
-                  console.log(`🧪 Test Case ${index + 1}:`, {
-                    id: testCase.id,
-                    input: testCase.input,
-                    expected: testCase.expectedOutput,
-                    hidden: testCase.isHidden,
-                    points: testCase.points,
-                  });
-                });
               } else {
-                console.log("❌ Failed to get test cases:", testCasesResponse);
+                console.log("Failed to get test cases:", testCasesResponse);
               }
             } catch (err) {
-              console.error("❌ Error fetching test cases:", err);
+              console.error("Error fetching test cases:", err);
             }
           } else {
-            console.log("❌ Challenge not found");
+            console.log(" Challenge not found");
             setError("Challenge not found");
           }
         } else {
-          console.log("❌ Failed to fetch challenges:", challengesResponse);
+          console.log(" Failed to fetch challenges:", challengesResponse);
         }
       } catch (err) {
-        console.error("❌ Network error occurred:", err);
+        console.error("Network error occurred:", err);
         setError("Network error occurred");
       } finally {
-        console.log("🏁 fetchData completed, setting loading to false");
+        // console.log("🏁 fetchData completed, setting loading to false");
         setLoading(false);
       }
     };
@@ -216,12 +227,8 @@ export default function ContestChallengePage({
   // Timer effect for contest duration
   useEffect(() => {
     if (!contest) {
-      console.log("⏰ Timer effect: No contest available");
       return;
     }
-
-    console.log("⏰ Starting timer for contest:", contest.title);
-    console.log("⏰ Contest end time:", contest.end_time);
 
     const updateTimer = () => {
       const now = new Date().getTime();
@@ -229,8 +236,6 @@ export default function ContestChallengePage({
       const timeLeft = endTime - now;
 
       if (timeLeft <= 0) {
-        console.log("⏰ Contest has ended, redirecting to results");
-        // Contest has ended
         router.push(`/contests/${contestId}/results`);
         return;
       }
@@ -246,36 +251,65 @@ export default function ContestChallengePage({
     const interval = setInterval(updateTimer, 1000);
 
     return () => {
-      console.log("⏰ Cleaning up timer interval");
       clearInterval(interval);
     };
   }, [contest, contestId, router]);
 
-  const handleSubmit = (code: string, language: string) => {
-    console.log("🚀 handleSubmit called with:");
-    console.log(
-      "📝 Code:",
-      code.substring(0, 100) + (code.length > 100 ? "..." : "")
-    );
-    console.log("🔤 Language:", language);
-    console.log("🏆 Contest ID:", contestId);
-    console.log("🧩 Challenge ID:", challengeId);
-    console.log("📊 Current contest:", contest);
-    console.log("🧪 Available test cases:", testCases.length);
+  const handleSubmit = useCallback(
+    async (
+      code: string,
+      language: string,
+      results?: {
+        passedTests: number;
+        totalTests: number;
+        successRate: number;
+        score: number;
+      }
+    ) => {
+      console.log("SENIDU", code, language, results);
 
-    // TODO: Implement contest submission logic
-    console.log("📤 Contest submission data:", {
-      contestId,
-      challengeId,
-      code: code.substring(0, 200) + (code.length > 200 ? "..." : ""),
-      language,
-      testCasesCount: testCases.length,
-      contestTitle: contest?.title,
-      challengeTitle: challenge?.title,
-    });
+      await apiService.submitChallengeSolution(
+        contestId,
+        challengeId,
+        code,
+        language,
+        token || "" ,
+        results
+      );
 
-    alert("Solution submitted successfully!");
-  };
+      // Show success message since results are stored in localStorage
+      if (results) {
+        alert(
+          `Solution saved successfully!\n\nTest Results:\n- Passed: ${
+            results.passedTests
+          }/${results.totalTests}\n- Success Rate: ${(
+            results.successRate * 100
+          ).toFixed(1)}%\n- Score: ${results.score.toFixed(
+            2
+          )}\n\nResults saved locally. Complete all challenges and click "End Contest" to submit final results.`
+        );
+      } else {
+        alert(
+          "Solution saved successfully! Complete all challenges and click 'End Contest' to submit final results."
+        );
+      }
+
+      // Redirect back to contest participate page
+      router.push(`/contests/${contestId}/participate`);
+    },
+    [contestId, router]
+  ); // Only recreate if these values change
+
+  const memoizedTestCases = useMemo(() => testCases, [testCases]);
+
+  const parsedTags = useMemo(() => {
+    if (!challenge?.tags) return [];
+    try {
+      return JSON.parse(challenge.tags);
+    } catch (error) {
+      return [];
+    }
+  }, [challenge?.tags]);
 
   if (loading) {
     return (
@@ -385,22 +419,11 @@ export default function ContestChallengePage({
                 <div className="mt-4">
                   <div className="text-sm font-medium mb-2">Tags:</div>
                   <div className="flex flex-wrap gap-1">
-                    {(() => {
-                      try {
-                        const tagsArray = JSON.parse(challenge.tags);
-                        return tagsArray.map((tag: string, index: number) => (
-                          <Badge
-                            key={index}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {tag}
-                          </Badge>
-                        ));
-                      } catch (error) {
-                        return null;
-                      }
-                    })()}
+                    {parsedTags.map((tag: string, index: number) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
 
@@ -426,7 +449,14 @@ export default function ContestChallengePage({
           {/* Code Editor */}
           <div className="lg:col-span-4">
             <CodeEditor
-              testCases={testCases}
+              testCases={
+                memoizedTestCases.length > 0
+                  ? memoizedTestCases
+                  : sampleTestCases
+              }
+              functionTemplates={sampleFunctionTemplates}
+              challengeId={challengeId}
+              contestId={contestId}
               onSubmit={handleSubmit}
               initialLanguage="python"
             />

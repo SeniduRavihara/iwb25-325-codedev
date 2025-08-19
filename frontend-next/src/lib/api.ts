@@ -283,16 +283,7 @@ class ApiService {
     });
   }
 
-  // Test case methods
-  async getTestCases(
-    challengeId: number
-  ): Promise<ApiResponse<{ data: TestCase[] }>> {
-    return this.request<{ data: TestCase[] }>("/testcases", {
-      headers: {
-        "X-Challenge-ID": challengeId.toString(),
-      },
-    });
-  }
+  // Test case methods - removed duplicate, using the newer version below
 
   // Create methods
   async createChallenge(
@@ -412,6 +403,56 @@ class ApiService {
         method: "GET",
       }
     );
+  }
+
+  async submitChallengeSolution(
+    contestId: number,
+    challengeId: number,
+    code: string,
+    language: string,
+    token: string,
+    results?: {
+      passedTests: number;
+      totalTests: number;
+      successRate: number;
+      score: number;
+    }
+  ): Promise<
+    ApiResponse<{
+      data: {
+        passedTests: number;
+        totalTests: number;
+        successRate: number;
+        score: number;
+        message: string;
+      };
+    }>
+  > {
+    return this.request<{
+      data: {
+        passedTests: number;
+        totalTests: number;
+        successRate: number;
+        score: number;
+        message: string;
+      };
+    }>(`/contests/${contestId}/challenges/${challengeId}/submit`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        code,
+        language,
+        token,
+        ...(results && {
+          passedTests: results.passedTests,
+          totalTests: results.totalTests,
+          successRate: results.successRate,
+          score: results.score,
+        }),
+      }),
+    });
   }
 }
 

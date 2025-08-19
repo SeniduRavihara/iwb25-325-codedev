@@ -41,6 +41,7 @@ Where `<language>` is one of: `python`, `java`, `ballerina`
 ### Language-Specific Usage
 
 #### Python
+
 ```bash
 docker run --rm \
   -e CODE_TO_EXECUTE_B64="$(echo 'print("Hello Python")' | base64)" \
@@ -48,6 +49,7 @@ docker run --rm \
 ```
 
 #### Java
+
 ```bash
 docker run --rm \
   -e CODE_TO_EXECUTE_B64="$(echo 'public class Main { public static void main(String[] args) { System.out.println("Hello Java"); } }' | base64)" \
@@ -55,6 +57,7 @@ docker run --rm \
 ```
 
 #### Ballerina
+
 ```bash
 docker run --rm \
   -e CODE_TO_EXECUTE_B64="$(echo 'import ballerina/io; public function main() { io:println("Hello Ballerina"); }' | base64)" \
@@ -150,28 +153,33 @@ esac
 ## ⚡ Performance Characteristics
 
 ### Startup Time
+
 - **First Run**: ~5-6 seconds (container startup)
 - **Subsequent Runs**: ~2-3 seconds (if image is cached)
 
 ### Memory Usage
+
 - **Base Container**: ~150MB
 - **Python Execution**: +20-50MB
 - **Java Execution**: +50-100MB
 - **Ballerina Execution**: +30-60MB
 
 ### Disk Usage
+
 - **Image Size**: ~800MB (includes all runtimes)
 - **Runtime**: Minimal temporary files only
 
 ## 🚦 Language Support
 
 ### Python 3
+
 - **Version**: System Python3 (usually 3.10+)
 - **Standard Library**: Full standard library available
 - **Execution**: Direct interpretation
 - **File Extension**: `.py`
 
 ### Java 17
+
 - **Version**: OpenJDK 17
 - **Compilation**: `javac` compilation step
 - **Execution**: `java` runtime
@@ -179,6 +187,7 @@ esac
 - **Class Requirement**: Must contain `public class Main`
 
 ### Ballerina
+
 - **Version**: Swan Lake 2201.9.0
 - **Execution**: `bal run` command
 - **File Extension**: `.bal`
@@ -189,6 +198,7 @@ esac
 ### Multi-Language Hello World
 
 #### Python
+
 ```python
 print("Hello from Python in Multi-Lang Runner!")
 for i in range(3):
@@ -196,6 +206,7 @@ for i in range(3):
 ```
 
 #### Java
+
 ```java
 public class Main {
     public static void main(String[] args) {
@@ -208,6 +219,7 @@ public class Main {
 ```
 
 #### Ballerina
+
 ```ballerina
 import ballerina/io;
 
@@ -230,7 +242,7 @@ os:Command dockerCmd = {
     arguments: [
         "run", "--rm",
         "--memory=256m",
-        "--cpus=1.0", 
+        "--cpus=1.0",
         "--network=none",
         "--pids-limit=50",
         "-e", "CODE_TO_EXECUTE_B64=" + code.toBytes().toBase64(),
@@ -243,6 +255,7 @@ os:Command dockerCmd = {
 ## 🐛 Troubleshooting
 
 ### Build Issues
+
 ```bash
 # Check available space (image is large)
 docker system df
@@ -255,6 +268,7 @@ docker build --no-cache -t multi-lang-runner:latest .
 ```
 
 ### Runtime Issues
+
 ```bash
 # Test each language separately
 docker run --rm -e CODE_TO_EXECUTE_B64="$(echo 'print("test")' | base64)" multi-lang-runner:latest python
@@ -267,6 +281,7 @@ docker run --rm multi-lang-runner:latest bal version
 ```
 
 ### Memory Issues
+
 ```bash
 # Monitor container resource usage
 docker stats
@@ -278,6 +293,7 @@ docker run --memory=512m multi-lang-runner:latest python
 ## 📊 Advantages Over Individual Runners
 
 ### Benefits
+
 - **Single Image**: One image to build and maintain
 - **Consistent Environment**: Same base system for all languages
 - **Reduced Overhead**: No need to switch between different containers
@@ -285,6 +301,7 @@ docker run --memory=512m multi-lang-runner:latest python
 - **Better Resource Utilization**: Shared base system components
 
 ### Trade-offs
+
 - **Larger Image Size**: ~800MB vs ~30-100MB for individual runners
 - **More Attack Surface**: Multiple runtimes in one container
 - **Complex Dependencies**: All language dependencies in one image
@@ -292,7 +309,9 @@ docker run --memory=512m multi-lang-runner:latest python
 ## 🔧 Customization
 
 ### Add New Languages
+
 Modify `Dockerfile` to include additional runtimes:
+
 ```dockerfile
 # Add Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
@@ -300,6 +319,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 ```
 
 Update `run-code.sh`:
+
 ```bash
   nodejs)
     echo "$CODE" > script.js
@@ -308,6 +328,7 @@ Update `run-code.sh`:
 ```
 
 ### Version Updates
+
 ```dockerfile
 # Update Java version
 FROM ubuntu:22.04
@@ -318,6 +339,7 @@ RUN curl -sL https://dist.ballerina.io/downloads/2201.10.0/ballerina-2201.10.0-s
 ```
 
 ### Add Libraries
+
 ```dockerfile
 # Add Python packages
 RUN apt-get install -y python3-pip \
@@ -330,19 +352,20 @@ COPY libs/*.jar /usr/share/java/
 ## 🤝 Integration
 
 This unified runner is the primary execution engine for:
+
 - **Hackathon Backend**: Main code execution service
 - **Web Frontend**: All language execution requests
 - **Security System**: Centralized security controls
 
 ## 📈 Performance Comparison
 
-| Metric | Multi-Lang Runner | Individual Runners |
-|--------|-------------------|-------------------|
-| Build Time | ~5-10 minutes | ~2-3 minutes each |
-| Image Size | ~800MB | ~30-100MB each |
-| Startup Time | ~2-3 seconds | ~1-3 seconds |
-| Memory Usage | ~150MB base | ~30-100MB each |
-| Maintenance | Single image | Multiple images |
+| Metric       | Multi-Lang Runner | Individual Runners |
+| ------------ | ----------------- | ------------------ |
+| Build Time   | ~5-10 minutes     | ~2-3 minutes each  |
+| Image Size   | ~800MB            | ~30-100MB each     |
+| Startup Time | ~2-3 seconds      | ~1-3 seconds       |
+| Memory Usage | ~150MB base       | ~30-100MB each     |
+| Maintenance  | Single image      | Multiple images    |
 
 ## 🔗 Related Documentation
 
@@ -354,6 +377,7 @@ This unified runner is the primary execution engine for:
 ## 💡 Best Practices
 
 ### Code Structure
+
 ```bash
 # Good: Clear error handling
 if [ -z "$CODE_TO_EXECUTE_B64" ]; then
@@ -363,6 +387,7 @@ fi
 ```
 
 ### Security
+
 ```bash
 # Good: Use temporary directories
 TMP_DIR=$(mktemp -d)
@@ -371,6 +396,7 @@ cd "$TMP_DIR"
 ```
 
 ### Resource Management
+
 ```bash
 # Good: Set appropriate limits
 docker run --memory=256m --cpus=1.0 --pids-limit=50

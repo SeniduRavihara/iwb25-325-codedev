@@ -26,6 +26,55 @@ export default function SolveChallengePage({ params }: SolveChallengePage) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sample function templates for testing
+  const sampleFunctionTemplates = [
+    {
+      language: "python",
+      functionName: "max_subarray_sum",
+      parameters: ["nums"],
+      returnType: "int",
+      starterCode:
+        "def max_subarray_sum(nums):\n    # Write your solution here\n    pass",
+      executionTemplate:
+        "# Execution template\nimport json\nimport sys\n\ndef max_subarray_sum(nums):\n    # Write your solution here\n    pass\n\n# Test execution wrapper\ninput_lines = sys.stdin.read().strip().split('\\n')\n\nresult = max_subarray_sum(nums)\nprint(result)",
+    },
+  ];
+
+  // Sample test cases for testing
+  const sampleTestCases: TestCase[] = [
+    {
+      id: "1",
+      input: "[-2,1,-3,4,-1,2,1,-5,4]",
+      expectedOutput: "6",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "2",
+      input: "[-1,-2,-3,-4]",
+      expectedOutput: "-1",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "3",
+      input: "[1,2,3,4,5]",
+      expectedOutput: "15",
+      isHidden: false,
+      points: 25,
+    },
+    {
+      id: "4",
+      input: "[5]",
+      expectedOutput: "5",
+      isHidden: false,
+      points: 25,
+    },
+  ];
+
+  console.log("🔧 Sample function templates:", sampleFunctionTemplates);
+  console.log("🔧 Sample test cases:", sampleTestCases);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!isAuthenticated) {
@@ -233,10 +282,17 @@ export default function SolveChallengePage({ params }: SolveChallengePage) {
           {/* Code Editor */}
           <div className="lg:col-span-3">
             <CodeEditor
-              testCases={testCases}
+              testCases={testCases.length > 0 ? testCases : sampleTestCases}
+              functionTemplates={sampleFunctionTemplates}
               onSubmit={handleSubmit}
               initialLanguage="python"
             />
+            {/* Debug info */}
+            <div className="text-xs text-muted-foreground mt-2">
+              Debug: {sampleFunctionTemplates.length} function templates,{" "}
+              {testCases.length > 0 ? testCases.length : sampleTestCases.length}{" "}
+              test cases
+            </div>
           </div>
         </div>
       </div>
