@@ -1438,7 +1438,7 @@ service / on new http:Listener(serverPort) {
     }
 
     // Submit solution for a contest challenge
-    resource function post contests/[int contestId]/challenges/[int challengeId]/submit(http:Caller caller, http:Request req) returns error? {
+    resource function post contests/[int contestId]/challenges/[int challengeId]/[int userId]/submit(http:Caller caller, http:Request req) returns error? {
         // Parse request body
         json requestBody = check req.getJsonPayload();
         string code = check requestBody.code;
@@ -1463,9 +1463,6 @@ service / on new http:Listener(serverPort) {
 
         io:println("📊 Test Results - Passed: " + passedTests.toString() + "/" + totalTests.toString() +
                 " (" + successRate.toString() + "%) - Score: " + score.toString());
-
-        // For now, use default user ID to avoid JWT import issues
-        int userId = 1;
 
         // Save submission to database
         error? saveResult = database:saveContestSubmission(

@@ -267,15 +267,20 @@ export default function ContestChallengePage({
         score: number;
       }
     ) => {
-      console.log("SENIDU", code, language, results);
+      if (!user || !token) {
+        alert("Please login to submit your solution");
+        return;
+      }
+      console.log("SENIDU-RESULT", code, language, results);
 
       await apiService.submitChallengeSolution(
         contestId,
         challengeId,
+        user.id,
         code,
         language,
-        token || "",
-        results
+        token,
+        results,
       );
 
       // Show success message since results are stored in localStorage
@@ -298,7 +303,7 @@ export default function ContestChallengePage({
       // Redirect back to contest participate page
       router.push(`/contests/${contestId}/participate`);
     },
-    [contestId, router]
+    [challengeId, contestId, router, token]
   ); // Only recreate if these values change
 
   const memoizedTestCases = useMemo(() => {
@@ -327,7 +332,7 @@ export default function ContestChallengePage({
       }
     }
     return sampleTestCases; // Fallback to sample data
-  }, [challenge?.test_cases]);
+  }, [challenge.test_cases, sampleTestCases]);
 
   const memoizedFunctionTemplates = useMemo(() => {
     // Parse function templates from database if available

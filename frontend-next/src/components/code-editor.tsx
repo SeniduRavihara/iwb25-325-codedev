@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/contexts/AuthContext";
 import { apiService, type CodeExecutionResponse } from "@/lib/api";
 import type { TestCase } from "@/lib/mock-data";
 import { AlertCircle, Download, Play, RotateCcw, Upload } from "lucide-react";
@@ -92,6 +93,7 @@ export function CodeEditor({
   initialCode,
   initialLanguage = "python",
 }: CodeEditorProps) {
+  const { user, token } = useAuth();
   // Only log on mount or when testCases change significantly
   // Remove the console.log to clean up the output
 
@@ -440,6 +442,11 @@ export function CodeEditor({
   };
 
   const submitCode = async () => {
+    if (!user || !token) {
+      alert("Please login to submit your solution");
+      return;
+    }
+
     await runCode();
 
     // Calculate score based on test results

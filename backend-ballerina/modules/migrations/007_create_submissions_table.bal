@@ -11,7 +11,7 @@ public function createSubmissionsTable(jdbc:Client dbClient) returns error? {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             challenge_id INTEGER NOT NULL,
-            contest_id INTEGER, -- NULL if not part of a contest
+            contest_id INTEGER NOT NULL,
             code TEXT NOT NULL,
             language TEXT NOT NULL,
             status TEXT CHECK(status IN ('pending', 'running', 'completed', 'failed')) DEFAULT 'pending',

@@ -458,6 +458,7 @@ class ApiService {
   async submitChallengeSolution(
     contestId: number,
     challengeId: number,
+    userId: number,
     code: string,
     language: string,
     token: string,
@@ -466,7 +467,7 @@ class ApiService {
       totalTests: number;
       successRate: number;
       score: number;
-    }
+    },
   ): Promise<
     ApiResponse<{
       data: {
@@ -486,7 +487,7 @@ class ApiService {
         score: number;
         message: string;
       };
-    }>(`/contests/${contestId}/challenges/${challengeId}/submit`, {
+    }>(`/contests/${contestId}/challenges/${challengeId}/${userId}/submit`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
