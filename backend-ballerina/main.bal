@@ -574,6 +574,176 @@ service / on new http:Listener(serverPort) {
         check caller->respond(response);
     }
 
+    // Get challenges for a specific contest (public)
+    resource function get contests/[int contestId]/challenges(http:Caller caller, http:Request req) returns error? {
+        models:Challenge[]|error challenges = database:getChallengesByContestId(contestId);
+
+        if challenges is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch challenges: " + challenges.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": challenges
+        });
+        check caller->respond(response);
+    }
+
+    // Debug endpoint to check database state
+    resource function get debug/database(http:Caller caller, http:Request req) returns error? {
+        // Get all contests
+        models:Contest[]|error contestsResult = database:getAllContests();
+        models:Contest[] contests = [];
+        if contestsResult is models:Contest[] {
+            contests = contestsResult;
+        }
+
+        // Get all challenges
+        models:Challenge[]|error challengesResult = database:getAllChallenges();
+        models:Challenge[] challenges = [];
+        if challengesResult is models:Challenge[] {
+            challenges = challengesResult;
+        }
+
+        // Get contest-challenge relationships
+        stream<record {}, sql:Error?> relationshipStream = database:test();
+
+        json[] relationships = [];
+        record {|record {} value;|}|error? result = relationshipStream.next();
+        while result is record {|record {} value;|} {
+            json|error jsonValue = result.value.toJson();
+            if jsonValue is json {
+                relationships.push(jsonValue);
+            }
+            result = relationshipStream.next();
+        }
+        error? closeResult = relationshipStream.close();
+        if closeResult is error {
+            io:println("Error closing relationship stream: " + closeResult.message());
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": {
+                "contests": contests,
+                "challenges": challenges,
+                "contest_challenges": relationships,
+                "summary": {
+                    "total_contests": contests.length(),
+                    "total_challenges": challenges.length(),
+                    "total_relationships": relationships.length()
+                }
+            }
+        });
+
+        // Fixed: Assign action result to variable, then return
+        error? respondResult = caller->respond(response);
+        return respondResult;
+    }
+
+    // Add challenges to contest (admin only)
+    resource function post contests/[int contestId]/link_challenges(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Extract challenge data
+        models:LinkChallengesToContest|error challengeIdsData = payload.cloneWithType(models:LinkChallengesToContest);
+
+        if challengeIdsData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid challenge data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        foreach int challengeId in challengeIdsData.challengeIds {
+            int points = 100; // default points
+            int orderIndex = 0; // default order
+
+            error? result = database:addChallengeToContest(contestId, challengeId, points, orderIndex);
+            if result is error {
+                http:Response response = new;
+                response.statusCode = 500;
+                response.setJsonPayload({
+                    "success": false,
+                    "message": "Failed to add challenge " + challengeId.toString() + ": " + result.message()
+                });
+                check caller->respond(response);
+                return;
+            }
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Challenge added to contest successfully"
+        });
+        check caller->respond(response);
+    }
+
     // Admin endpoints for challenges
     resource function get admin_challenges(http:Caller caller, http:Request req) returns error? {
         // Check if user is admin
@@ -872,7 +1042,8 @@ service / on new http:Listener(serverPort) {
             "data": {
                 "title": contestData.title,
                 "duration": contestData.duration,
-                "created_by": userResult.id
+                "created_by": userResult.id,
+                "contest_id": result.lastInsertId
             }
         });
         check caller->respond(response);

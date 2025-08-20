@@ -62,6 +62,8 @@ public type Challenge record {|
     int author_id;
     int submissions_count;
     decimal success_rate; // Make sure this matches - could be int if database stores as int
+    string? function_templates; // JSON string of function templates
+    string? test_cases; // JSON string of test cases
     string created_at; // Date as string
     string updated_at; // Date as string
 |};
@@ -73,6 +75,12 @@ public type ChallengeCreate record {|
     string tags;
     int time_limit;
     int memory_limit;
+    string? function_templates; // JSON string of function templates
+    string? test_cases; // JSON string of test cases
+|};
+
+public type LinkChallengesToContest record {|
+    int[] challengeIds;
 |};
 
 public type ChallengeUpdate record {|
@@ -109,19 +117,20 @@ public type Contest record {|
     int id;
     string title;
     string description;
-    string start_time;        // SQLite DATETIME comes as string
-    string end_time;          // SQLite DATETIME comes as string  
+    string start_time; // SQLite DATETIME comes as string
+    string end_time; // SQLite DATETIME comes as string  
     int duration;
     string status;
-    int? max_participants;    // Can be NULL in database
-    string? prizes;           // Can be NULL in database
-    string? rules;            // Can be NULL in database
+    int? max_participants; // Can be NULL in database
+    string? prizes; // Can be NULL in database
+    string? rules; // Can be NULL in database
     int created_by;
-    string registration_deadline;  // SQLite DATETIME comes as string
+    string registration_deadline; // SQLite DATETIME comes as string
     int participants_count;
-    string created_at;        // SQLite DATETIME comes as string
-    string updated_at;        // SQLite DATETIME comes as string
+    string created_at; // SQLite DATETIME comes as string
+    string updated_at; // SQLite DATETIME comes as string
 |};
+
 public type ContestCreate record {|
     string title;
     string description;

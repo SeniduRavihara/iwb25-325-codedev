@@ -1,19 +1,34 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiService } from "@/lib/api";
-import { Plus, X, Code, Save } from 'lucide-react';
+import apiService from "@/lib/api";
+import {
+  BookOpen,
+  Clock,
+  Code,
+  HardDrive,
+  Plus,
+  Save,
+  Tag,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 
 interface TestCase {
   id: string;
@@ -55,7 +70,9 @@ export default function AddChallengePage() {
     newTag: "",
   });
 
-  const [functionTemplates, setFunctionTemplates] = useState<FunctionTemplate[]>([]);
+  const [functionTemplates, setFunctionTemplates] = useState<
+    FunctionTemplate[]
+  >([]);
 
   const [testCases, setTestCases] = useState<TestCase[]>([
     { id: "1", input: "", expectedOutput: "", isHidden: false, points: 50 },
@@ -67,7 +84,7 @@ export default function AddChallengePage() {
     parameters: [],
     returnType: "",
     starterCode: "",
-    executionTemplate: ""
+    executionTemplate: "",
   });
 
   const [newParameter, setNewParameter] = useState("");
@@ -75,10 +92,13 @@ export default function AddChallengePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const addParameter = () => {
-    if (newParameter.trim() && !currentTemplate.parameters.includes(newParameter.trim())) {
+    if (
+      newParameter.trim() &&
+      !currentTemplate.parameters.includes(newParameter.trim())
+    ) {
       setCurrentTemplate({
         ...currentTemplate,
-        parameters: [...currentTemplate.parameters, newParameter.trim()]
+        parameters: [...currentTemplate.parameters, newParameter.trim()],
       });
       setNewParameter("");
     }
@@ -87,36 +107,44 @@ export default function AddChallengePage() {
   const removeParameter = (param: string) => {
     setCurrentTemplate({
       ...currentTemplate,
-      parameters: currentTemplate.parameters.filter(p => p !== param)
+      parameters: currentTemplate.parameters.filter((p) => p !== param),
     });
   };
 
   const generateStarterCode = () => {
     const { language, functionName, parameters, returnType } = currentTemplate;
     let code = "";
-    
+
     switch (language) {
       case "python":
-        code = `def ${functionName}(${parameters.join(", ")}):\n    # Write your solution here\n    pass`;
+        code = `def ${functionName}(${parameters.join(
+          ", "
+        )}):\n    # Write your solution here\n    pass`;
         break;
       case "javascript":
-        code = `function ${functionName}(${parameters.join(", ")}) {\n    // Write your solution here\n}`;
+        code = `function ${functionName}(${parameters.join(
+          ", "
+        )}) {\n    // Write your solution here\n}`;
         break;
       case "java":
-        code = `public ${returnType} ${functionName}(${parameters.map(p => `int ${p}`).join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
+        code = `public ${returnType} ${functionName}(${parameters
+          .map((p) => `int ${p}`)
+          .join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
         break;
       case "cpp":
-        code = `${returnType} ${functionName}(${parameters.map(p => `vector<int>& ${p}`).join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
+        code = `${returnType} ${functionName}(${parameters
+          .map((p) => `vector<int>& ${p}`)
+          .join(", ")}) {\n    // Write your solution here\n    return 0;\n}`;
         break;
     }
-    
+
     setCurrentTemplate({ ...currentTemplate, starterCode: code });
   };
 
   const generateExecutionTemplate = () => {
     const { language, functionName, parameters } = currentTemplate;
     let template = "";
-    
+
     switch (language) {
       case "python":
         if (parameters.length === 1) {
@@ -140,8 +168,10 @@ ${currentTemplate.starterCode}
 
 # Test execution wrapper
 input_lines = sys.stdin.read().strip().split('\\n')
-${parameters.map((param, i) => `${param} = json.loads(input_lines[${i}])`).join('\n')}
-result = ${functionName}(${parameters.join(', ')})
+${parameters
+  .map((param, i) => `${param} = json.loads(input_lines[${i}])`)
+  .join("\n")}
+result = ${functionName}(${parameters.join(", ")})
 print(result)`;
         }
         break;
@@ -151,15 +181,57 @@ ${currentTemplate.starterCode}
 
 // Test execution wrapper
 const input = require('fs').readFileSync(0, 'utf8').trim();
-${parameters.length === 1 
-  ? `const ${parameters[0]} = JSON.parse(input);`
-  : parameters.map((param, i) => `const ${param} = JSON.parse(input.split('\\n')[${i}]);`).join('\n')
+${
+  parameters.length === 1
+    ? `const ${parameters[0]} = JSON.parse(input);`
+    : parameters
+        .map(
+          (param, i) => `const ${param} = JSON.parse(input.split('\\n')[${i}]);`
+        )
+        .join("\n")
 }
-const result = ${functionName}(${parameters.join(', ')});
+const result = ${functionName}(${parameters.join(", ")});
 console.log(result);`;
         break;
-    }
+      case "java":
+        template = `import java.util.*;
+
+public class Main {
+    ${currentTemplate.starterCode}
     
+    public static void main(String[] args) {
+        try {
+            // Parse input array from string like "[1,2,3]"
+            String input = "[1,2,3]"; // This will be replaced by actual input
+            input = input.substring(1, input.length() - 1); // Remove [ and ]
+            String[] parts = input.split(",");
+            int[] ${parameters[0]} = new int[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                ${parameters[0]}[i] = Integer.parseInt(parts[i].trim());
+            }
+            
+            int result = ${functionName}(${parameters[0]});
+            System.out.println(result);
+        } catch (Exception e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+}`;
+        break;
+      case "ballerina":
+        template = `import ballerina/io;
+
+${currentTemplate.starterCode}
+
+public function main() returns error? {
+    // Simple test with hardcoded array
+    int[] ${parameters[0]} = [1, 2, 3]; // This will be replaced by actual input
+    int result = ${functionName}(${parameters[0]});
+    io:println(result);
+}`;
+        break;
+    }
+
     setCurrentTemplate({ ...currentTemplate, executionTemplate: template });
   };
 
@@ -172,7 +244,7 @@ console.log(result);`;
         parameters: [],
         returnType: "",
         starterCode: "",
-        executionTemplate: ""
+        executionTemplate: "",
       });
     }
   };
@@ -182,7 +254,10 @@ console.log(result);`;
   };
 
   const addTag = () => {
-    if (formData.newTag.trim() && !formData.tags.includes(formData.newTag.trim())) {
+    if (
+      formData.newTag.trim() &&
+      !formData.tags.includes(formData.newTag.trim())
+    ) {
       setFormData({
         ...formData,
         tags: [...formData.tags, formData.newTag.trim()],
@@ -209,8 +284,14 @@ console.log(result);`;
     setTestCases([...testCases, newTestCase]);
   };
 
-  const updateTestCase = (id: string, field: keyof TestCase, value: string | number | boolean) => {
-    setTestCases(testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc)));
+  const updateTestCase = (
+    id: string,
+    field: keyof TestCase,
+    value: string | number | boolean
+  ) => {
+    setTestCases(
+      testCases.map((tc) => (tc.id === id ? { ...tc, [field]: value } : tc))
+    );
   };
 
   const removeTestCase = (id: string) => {
@@ -270,7 +351,6 @@ console.log(result);`;
       }
 
       console.log(JSON.stringify(functionTemplates));
-      
 
       // Prepare challenge data for API
       const challengeData = {
@@ -285,13 +365,13 @@ console.log(result);`;
       };
 
       // Create challenge via API
-      // const response = await apiService.createChallenge(challengeData, token);
+      const response = await apiService.createChallenge(challengeData, token);
 
-      // if (response.success) {
-      //   router.push("/admin/challenges?success=true");
-      // } else {
-      //   setSubmitError(response.message || "Failed to create challenge");
-      // }
+      if (response.success) {
+        router.push("/admin/challenges?success=true");
+      } else {
+        setSubmitError(response.message || "Failed to create challenge");
+      }
     } catch (err) {
       console.error("Error creating challenge:", err);
       setSubmitError("Network error occurred");
@@ -325,7 +405,8 @@ console.log(result);`;
               Add New Challenge
             </h1>
             <p className="text-muted-foreground mt-2">
-              Create a new coding challenge with function templates and test cases
+              Create a new coding challenge with function templates and test
+              cases
             </p>
           </div>
           <Button variant="outline" asChild>
@@ -335,13 +416,18 @@ console.log(result);`;
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information */}
-          <Card>
+          <Card className="border-2 border-border shadow-lg">
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Basic Information
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title" className="text-sm font-medium">
+                  Title
+                </Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -349,12 +435,15 @@ console.log(result);`;
                     setFormData({ ...formData, title: e.target.value })
                   }
                   placeholder="Enter challenge title"
+                  className="border-2 border-border focus:border-primary"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Description
+                </Label>
                 <RichTextEditor
                   value={formData.description}
                   onChange={(value: string) =>
@@ -364,16 +453,18 @@ console.log(result);`;
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="difficulty">Difficulty</Label>
+                  <Label htmlFor="difficulty" className="text-sm font-medium">
+                    Difficulty
+                  </Label>
                   <Select
                     value={formData.difficulty}
                     onValueChange={(value: any) =>
                       setFormData({ ...formData, difficulty: value })
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="border-2 border-border focus:border-primary">
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
@@ -385,7 +476,13 @@ console.log(result);`;
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="timeLimit">Time Limit (minutes)</Label>
+                  <Label
+                    htmlFor="timeLimit"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <Clock className="h-4 w-4" />
+                    Time Limit (minutes)
+                  </Label>
                   <Input
                     id="timeLimit"
                     type="number"
@@ -398,11 +495,18 @@ console.log(result);`;
                     }
                     min="1"
                     max="300"
+                    className="border-2 border-border focus:border-primary"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="memoryLimit">Memory Limit (MB)</Label>
+                  <Label
+                    htmlFor="memoryLimit"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <HardDrive className="h-4 w-4" />
+                    Memory Limit (MB)
+                  </Label>
                   <Input
                     id="memoryLimit"
                     type="number"
@@ -415,12 +519,16 @@ console.log(result);`;
                     }
                     min="16"
                     max="2048"
+                    className="border-2 border-border focus:border-primary"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Tags</Label>
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  Tags
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     value={formData.newTag}
@@ -428,6 +536,7 @@ console.log(result);`;
                       setFormData({ ...formData, newTag: e.target.value })
                     }
                     placeholder="Add a tag"
+                    className="border-2 border-border focus:border-primary"
                     onKeyPress={(e) =>
                       e.key === "Enter" && (e.preventDefault(), addTag())
                     }
@@ -459,7 +568,7 @@ console.log(result);`;
           </Card>
 
           {/* Function Template Builder */}
-          <Card>
+          <Card className="border-2 border-border shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Code className="h-5 w-5" />
@@ -469,15 +578,20 @@ console.log(result);`;
                 Define the function signature that users must implement
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label>Language</Label>
-                  <Select 
-                    value={currentTemplate.language} 
-                    onValueChange={(value) => setCurrentTemplate({ ...currentTemplate, language: value })}
+                  <Label className="text-sm font-medium">Language</Label>
+                  <Select
+                    value={currentTemplate.language}
+                    onValueChange={(value) =>
+                      setCurrentTemplate({
+                        ...currentTemplate,
+                        language: value,
+                      })
+                    }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="border-2 border-border focus:border-primary">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -488,34 +602,49 @@ console.log(result);`;
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label>Function Name</Label>
+                  <Label className="text-sm font-medium">Function Name</Label>
                   <Input
                     value={currentTemplate.functionName}
-                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, functionName: e.target.value })}
+                    onChange={(e) =>
+                      setCurrentTemplate({
+                        ...currentTemplate,
+                        functionName: e.target.value,
+                      })
+                    }
                     placeholder="max_subarray_sum"
+                    className="border-2 border-border focus:border-primary"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label>Return Type</Label>
+                  <Label className="text-sm font-medium">Return Type</Label>
                   <Input
                     value={currentTemplate.returnType}
-                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, returnType: e.target.value })}
+                    onChange={(e) =>
+                      setCurrentTemplate({
+                        ...currentTemplate,
+                        returnType: e.target.value,
+                      })
+                    }
                     placeholder="int, List[int], etc."
+                    className="border-2 border-border focus:border-primary"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Parameters</Label>
+                <Label className="text-sm font-medium">Parameters</Label>
                 <div className="flex gap-2">
                   <Input
                     value={newParameter}
                     onChange={(e) => setNewParameter(e.target.value)}
                     placeholder="nums, target, etc."
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addParameter())}
+                    className="border-2 border-border focus:border-primary"
+                    onKeyPress={(e) =>
+                      e.key === "Enter" && (e.preventDefault(), addParameter())
+                    }
                   />
                   <Button type="button" onClick={addParameter} size="sm">
                     <Plus className="h-4 w-4" />
@@ -523,11 +652,15 @@ console.log(result);`;
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {currentTemplate.parameters.map((param) => (
-                    <Badge key={param} variant="outline" className="flex items-center gap-1">
+                    <Badge
+                      key={param}
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
                       {param}
-                      <button 
+                      <button
                         type="button"
-                        onClick={() => removeParameter(param)} 
+                        onClick={() => removeParameter(param)}
                         className="ml-1 hover:text-destructive"
                       >
                         <X className="h-3 w-3" />
@@ -538,43 +671,68 @@ console.log(result);`;
               </div>
 
               <div className="flex gap-2">
-                <Button type="button" onClick={generateStarterCode} variant="outline">
+                <Button
+                  type="button"
+                  onClick={generateStarterCode}
+                  variant="outline"
+                >
                   Generate Starter Code
                 </Button>
-                <Button type="button" onClick={generateExecutionTemplate} variant="outline">
+                <Button
+                  type="button"
+                  onClick={generateExecutionTemplate}
+                  variant="outline"
+                >
                   Generate Execution Template
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Starter Code (What users see)</Label>
+                  <Label className="text-sm font-medium">
+                    Starter Code (What users see)
+                  </Label>
                   <Textarea
                     value={currentTemplate.starterCode}
-                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, starterCode: e.target.value })}
+                    onChange={(e) =>
+                      setCurrentTemplate({
+                        ...currentTemplate,
+                        starterCode: e.target.value,
+                      })
+                    }
                     placeholder="def max_subarray_sum(nums):\n    # Write your solution here\n    pass"
                     rows={8}
-                    className="font-mono text-sm"
+                    className="font-mono text-sm border-2 border-border focus:border-primary"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label>Execution Template (Hidden from users)</Label>
+                  <Label className="text-sm font-medium">
+                    Execution Template (Hidden from users)
+                  </Label>
                   <Textarea
                     value={currentTemplate.executionTemplate}
-                    onChange={(e) => setCurrentTemplate({ ...currentTemplate, executionTemplate: e.target.value })}
+                    onChange={(e) =>
+                      setCurrentTemplate({
+                        ...currentTemplate,
+                        executionTemplate: e.target.value,
+                      })
+                    }
                     placeholder="Code that wraps user function with test case injection..."
                     rows={8}
-                    className="font-mono text-sm"
+                    className="font-mono text-sm border-2 border-border focus:border-primary"
                   />
                 </div>
               </div>
 
-              <Button 
-                type="button" 
-                onClick={addFunctionTemplate} 
+              <Button
+                type="button"
+                onClick={addFunctionTemplate}
                 className="w-full"
-                disabled={!currentTemplate.functionName || currentTemplate.parameters.length === 0}
+                disabled={
+                  !currentTemplate.functionName ||
+                  currentTemplate.parameters.length === 0
+                }
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Function Template
@@ -584,31 +742,39 @@ console.log(result);`;
 
           {/* Added Templates Display */}
           {functionTemplates.length > 0 && (
-            <Card>
+            <Card className="border-2 border-border shadow-lg">
               <CardHeader>
-                <CardTitle>Function Templates ({functionTemplates.length})</CardTitle>
+                <CardTitle>
+                  Function Templates ({functionTemplates.length})
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {functionTemplates.map((template, index) => (
-                    <div key={index} className="border rounded-lg p-4">
+                    <div
+                      key={index}
+                      className="border-2 border-border rounded-lg p-4"
+                    >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h4 className="font-medium">{template.language} - {template.functionName}</h4>
+                          <h4 className="font-medium">
+                            {template.language} - {template.functionName}
+                          </h4>
                           <p className="text-sm text-muted-foreground">
-                            Parameters: {template.parameters.join(', ')} | Returns: {template.returnType}
+                            Parameters: {template.parameters.join(", ")} |
+                            Returns: {template.returnType}
                           </p>
                         </div>
-                        <Button 
+                        <Button
                           type="button"
-                          variant="outline" 
+                          variant="outline"
                           size="sm"
                           onClick={() => removeFunctionTemplate(index)}
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="bg-muted p-3 rounded font-mono text-sm">
+                      <div className="bg-muted p-3 rounded font-mono text-sm border border-border">
                         <pre>{template.starterCode}</pre>
                       </div>
                     </div>
@@ -619,7 +785,7 @@ console.log(result);`;
           )}
 
           {/* Test Cases */}
-          <Card>
+          <Card className="border-2 border-border shadow-lg">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Test Cases</CardTitle>
@@ -629,9 +795,12 @@ console.log(result);`;
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {testCases.map((testCase, index) => (
-                <div key={testCase.id} className="border border-border rounded-lg p-4">
+                <div
+                  key={testCase.id}
+                  className="border-2 border-border rounded-lg p-4"
+                >
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-medium">Test Case {index + 1}</h4>
                     <div className="flex items-center gap-2">
@@ -646,7 +815,7 @@ console.log(result);`;
                             e.target.checked
                           )
                         }
-                        className="rounded"
+                        className="rounded border-2 border-border"
                       />
                       <Button
                         type="button"
@@ -659,21 +828,25 @@ console.log(result);`;
                       </Button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label>Input (JSON format)</Label>
+                      <Label className="text-sm font-medium">
+                        Input (JSON format)
+                      </Label>
                       <Textarea
                         value={testCase.input}
                         onChange={(e) =>
                           updateTestCase(testCase.id, "input", e.target.value)
                         }
-                        placeholder='[-2,1,-3,4,-1,2,1,-5,4]'
+                        placeholder="[-2,1,-3,4,-1,2,1,-5,4]"
                         rows={4}
-                        className="font-mono"
+                        className="font-mono border-2 border-border focus:border-primary"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Expected Output</Label>
+                      <Label className="text-sm font-medium">
+                        Expected Output
+                      </Label>
                       <Textarea
                         value={testCase.expectedOutput}
                         onChange={(e) =>
@@ -685,12 +858,12 @@ console.log(result);`;
                         }
                         placeholder="6"
                         rows={4}
-                        className="font-mono"
+                        className="font-mono border-2 border-border focus:border-primary"
                       />
                     </div>
                   </div>
                   <div className="mt-4">
-                    <Label>Points</Label>
+                    <Label className="text-sm font-medium">Points</Label>
                     <Input
                       type="number"
                       value={testCase.points}
@@ -703,7 +876,7 @@ console.log(result);`;
                       }
                       min="1"
                       max="100"
-                      className="w-24"
+                      className="w-24 border-2 border-border focus:border-primary"
                     />
                   </div>
                 </div>
@@ -713,7 +886,7 @@ console.log(result);`;
 
           {/* Error Display */}
           {submitError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
               <div className="text-red-800 text-sm">{submitError}</div>
             </div>
           )}

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_BASE_URL = "http://localhost:8080";
 
 export interface ApiResponse<T = any> {
@@ -108,6 +109,8 @@ export interface Challenge {
   author_id: number;
   submissions_count: number;
   success_rate: number;
+  function_templates?: string; // JSON string of function templates
+  test_cases?: string; // JSON string of test cases
   created_at: string;
   updated_at: string;
 }
@@ -148,6 +151,8 @@ export interface ChallengeCreate {
   tags: string;
   time_limit: number;
   memory_limit: number;
+  function_templates?: string; // JSON string of function templates
+  test_cases?: string; // JSON string of test cases
 }
 
 export interface ContestCreate {
@@ -258,6 +263,37 @@ class ApiService {
     return this.request<{ data: Challenge[] }>("/challenges");
   }
 
+  async getChallengesForContest(
+    contestId: number
+  ): Promise<ApiResponse<{ data: Challenge[] }>> {
+    return this.request<{ data: Challenge[] }>(
+      `/contests/${contestId}/challenges`
+    );
+  }
+
+  async addChallengeToContest(
+    contestId: number,
+    challengeId: number,
+    points: number,
+    orderIndex: number,
+    token: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(
+      `/contests/${contestId}/challenges`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          challengeId,
+          points,
+          orderIndex,
+        }),
+      }
+    );
+  }
+
   async getAdminChallenges(
     token: string
   ): Promise<ApiResponse<{ data: Challenge[] }>> {
@@ -309,6 +345,20 @@ class ApiService {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(contestData),
+    });
+  }
+
+  async linkChallengesToContest(
+    contestId: number,
+    challengeIds: number[],
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/link_challenges`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ challengeIds }),
     });
   }
 

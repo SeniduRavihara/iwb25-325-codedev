@@ -56,7 +56,7 @@ public function checkUserExists(string username, string email) returns boolean|e
     return result.value.count > 0;
 }
 
-// Create new user
+// --Create new user--
 public function createUser(models:UserRegistration userReg, string hashedPassword) returns sql:ExecutionResult|error {
     return dbClient->execute(`
         INSERT INTO users (username, email, password_hash, is_admin, role) 
@@ -64,7 +64,7 @@ public function createUser(models:UserRegistration userReg, string hashedPasswor
     `);
 }
 
-// Verify user credentials
+// --Verify user credentials--
 public function getUserByCredentials(string username, string hashedPassword) returns models:User|error {
     stream<models:User, sql:Error?> userStream =
         dbClient->query(`SELECT id, username, email, password_hash, is_admin, role, created_at FROM users 
@@ -134,7 +134,7 @@ public function getAllChallenges() returns models:Challenge[]|error {
 
     // Use raw query first, then manually map to avoid type issues
     stream<record {}, sql:Error?> challengeStream =
-        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
+        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, test_cases, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
 
     models:Challenge[] challenges = [];
     record {|record {} value;|}|error? result = challengeStream.next();
@@ -157,6 +157,8 @@ public function getAllChallenges() returns models:Challenge[]|error {
             author_id: <int>rawChallenge["author_id"],
             submissions_count: <int>rawChallenge["submissions_count"],
             success_rate: <decimal>rawChallenge["success_rate"],  // Convert int to decimal
+            function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
+            test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
             created_at: <string>rawChallenge["created_at"],
             updated_at: <string>rawChallenge["updated_at"]
         };
@@ -250,11 +252,30 @@ public function getTestCasesByChallengeId(int challengeId) returns models:TestCa
     return testCases;
 }
 
-// Create new challenge
+// --Create new challenge--
 public function createChallenge(models:ChallengeCreate challengeData, int authorId) returns sql:ExecutionResult|error {
+    // Log the incoming data for debugging
+    io:println("Creating challenge with data:");
+    io:println("Title: " + challengeData.title);
+    io:println("Description: " + challengeData.description);
+    io:println("Difficulty: " + challengeData.difficulty);
+    io:println("Tags: " + challengeData.tags);
+    io:println("Time limit: " + challengeData.time_limit.toString());
+    io:println("Memory limit: " + challengeData.memory_limit.toString());
+
+    // Log if additional data is provided
+    if challengeData.function_templates is string {
+        io:println("Function templates provided");
+    }
+
+    if challengeData.test_cases is string {
+        io:println("Test cases provided");
+    }
+
+    // Create the challenge in database with function_templates and test_cases
     return dbClient->execute(`
-        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at) 
-        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, test_cases, created_at, updated_at) 
+        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, ${challengeData.function_templates}, ${challengeData.test_cases}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 }
 
@@ -270,6 +291,18 @@ public function createContest(models:ContestCreate contestData, int createdBy) r
         INSERT INTO contests (title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at) 
         VALUES (${contestData.title}, ${contestData.description}, ${contestData.start_time}, ${contestData.end_time}, ${contestData.duration}, 'upcoming', ${contestData.max_participants}, ${contestData.prizes}, ${contestData.rules}, ${createdBy}, ${contestData.registration_deadline}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
+}
+
+// Add challenge to contest
+public function addChallengeToContest(int contestId, int challengeId, int points, int orderIndex) returns error? {
+    sql:ExecutionResult|error result = dbClient->execute(`
+        INSERT INTO contest_challenges (contest_id, challenge_id, points, order_index)
+        VALUES (${contestId}, ${challengeId}, ${points}, ${orderIndex})
+    `);
+    if result is error {
+        return error("Failed to add challenge to contest: " + result.message());
+    }
+    return;
 }
 
 /// Add these debug functions to your database module
@@ -633,16 +666,16 @@ public function saveContestSubmission(
         AND challenge_id = ${challengeId} 
         AND contest_id = ${contestId}
     `;
-    
+
     stream<record {|int id;|}, error?> resultStream = dbClient->query(checkQuery);
     record {|int id;|}? existingSubmission = ();
-    
+
     // Check if record exists
     record {|record {|int id;|} value;|}|error? first = resultStream.next();
     if first is record {|record {|int id;|} value;|} {
         existingSubmission = first.value;
     }
-    
+
     // Close the stream
     error? closeResult = resultStream.close();
     if closeResult is error {
@@ -650,11 +683,11 @@ public function saveContestSubmission(
     }
 
     sql:ExecutionResult|error dbResult;
-    
+
     if existingSubmission is record {|int id;|} {
         // Update existing submission
         io:println("Updating existing submission with ID: " + existingSubmission.id.toString());
-        
+
         dbResult = dbClient->execute(`
             UPDATE submissions SET
                 code = ${code},
@@ -667,17 +700,17 @@ public function saveContestSubmission(
                 submitted_at = CURRENT_TIMESTAMP
             WHERE id = ${existingSubmission.id}
         `);
-        
+
         if dbResult is error {
             io:println("❌ Database update failed: " + dbResult.message());
             return error("Failed to update contest submission: " + dbResult.message());
         }
-        
+
         io:println("✓ Submission updated successfully");
     } else {
         // Insert new submission
         io:println("Creating new submission");
-        
+
         dbResult = dbClient->execute(`
             INSERT INTO submissions (
                 user_id, challenge_id, contest_id, code, language, 
@@ -694,7 +727,7 @@ public function saveContestSubmission(
             io:println("❌ Database insertion failed: " + dbResult.message());
             return error("Failed to save contest submission: " + dbResult.message());
         }
-        
+
         io:println("✓ New submission created successfully");
     }
 
@@ -736,6 +769,36 @@ public function getUserContestProgress(int userId, int contestId) returns record
 
 // Get challenges by contest ID
 public function getChallengesByContestId(int contestId) returns models:Challenge[]|error {
+    io:println("Getting challenges by contest ID: " + contestId.toString());
+
+    // First, let's check if the contest exists
+    stream<record {|int count;|}, sql:Error?> contestCheckStream = dbClient->query(`
+        SELECT COUNT(*) as count FROM contests WHERE id = ${contestId}
+    `);
+    record {|record {|int count;|} value;|}|error? contestCheckResult = contestCheckStream.next();
+    error? closeContestCheck = contestCheckStream.close();
+    if closeContestCheck is error {
+        return closeContestCheck;
+    }
+
+    if contestCheckResult is record {|record {|int count;|} value;|} {
+        io:println("Contest " + contestId.toString() + " exists: " + (contestCheckResult.value.count > 0 ? "YES" : "NO"));
+    }
+
+    // Check how many contest-challenge relationships exist
+    stream<record {|int count;|}, sql:Error?> relationshipCheckStream = dbClient->query(`
+        SELECT COUNT(*) as count FROM contest_challenges WHERE contest_id = ${contestId}
+    `);
+    record {|record {|int count;|} value;|}|error? relationshipCheckResult = relationshipCheckStream.next();
+    error? closeRelationshipCheck = relationshipCheckStream.close();
+    if closeRelationshipCheck is error {
+        return closeRelationshipCheck;
+    }
+
+    if relationshipCheckResult is record {|record {|int count;|} value;|} {
+        io:println("Contest-challenge relationships for contest " + contestId.toString() + ": " + relationshipCheckResult.value.count.toString());
+    }
+
     stream<record {}, sql:Error?> resultStream = dbClient->query(`
         SELECT c.* FROM challenges c
         JOIN contest_challenges cc ON c.id = cc.challenge_id
@@ -746,22 +809,27 @@ public function getChallengesByContestId(int contestId) returns models:Challenge
     record {|record {} value;|}|error? result = resultStream.next();
 
     while result is record {|record {} value;|} {
-        // Convert record to Challenge model
+        record {} rawChallenge = result.value;
+        io:println("Found challenge: " + rawChallenge.toString());
+
+        // Properly map all fields from result.value to challenge
         models:Challenge challenge = {
-            id: 0,  // Placeholder, needs proper mapping
-            title: "",  // Placeholder
-            description: "",  // Placeholder
-            difficulty: "",  // Placeholder
-            tags: "",  // Placeholder
-            time_limit: 0,  // Placeholder
-            memory_limit: 0,  // Placeholder
-            success_rate: 0.0,  // Placeholder
-            author_id: 0,  // Added to model
-            submissions_count: 0,  // Added to model
-            created_at: "",  // Placeholder
-            updated_at: "" // Placeholder
+            id: <int>rawChallenge["id"],
+            title: <string>rawChallenge["title"],
+            description: <string>rawChallenge["description"],
+            difficulty: <string>rawChallenge["difficulty"],
+            tags: <string>rawChallenge["tags"],
+            time_limit: <int>rawChallenge["time_limit"],
+            memory_limit: <int>rawChallenge["memory_limit"],
+            author_id: <int>rawChallenge["author_id"],
+            submissions_count: <int>rawChallenge["submissions_count"],
+            success_rate: <decimal>rawChallenge["success_rate"],
+            function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
+            test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
+            created_at: <string>rawChallenge["created_at"],
+            updated_at: <string>rawChallenge["updated_at"]
         };
-        // TODO: Properly map all fields from result.value to challenge
+
         challenges.push(challenge);
         result = resultStream.next();
     }
@@ -769,6 +837,8 @@ public function getChallengesByContestId(int contestId) returns models:Challenge
     if closeResult is error {
         return closeResult;
     }
+
+    io:println("Returning " + challenges.length().toString() + " challenges for contest " + contestId.toString());
     return challenges;
 }
 
@@ -788,4 +858,24 @@ public function saveContestResult(int userId, int contestId, decimal totalScore,
         return error("Failed to save contest result: " + result.message());
     }
     return;
+}
+
+// Remove challenge from contest
+public function removeChallengeFromContest(int contestId, int challengeId) returns error? {
+    sql:ExecutionResult|error result = dbClient->execute(`
+        DELETE FROM contest_challenges 
+        WHERE contest_id = ${contestId} AND challenge_id = ${challengeId}
+    `);
+    if result is error {
+        return error("Failed to remove challenge from contest: " + result.message());
+    }
+    return;
+}
+
+public function test() returns stream<record {}, sql:Error?> {
+    stream<record {}, sql:Error?> relationshipStream = dbClient->query(`
+        SELECT * FROM contest_challenges ORDER BY contest_id, challenge_id
+    `);
+
+    return relationshipStream;
 }

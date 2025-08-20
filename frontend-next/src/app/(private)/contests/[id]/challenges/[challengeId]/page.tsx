@@ -176,35 +176,36 @@ export default function ContestChallengePage({
 
           if (foundChallenge) {
             setChallenge(foundChallenge);
+            console.log("foundChallenge", foundChallenge);
 
-            try {
-              const testCasesResponse = await apiService.getTestCases(
-                challengeId
-              );
+            // try {
+            //   const testCasesResponse = await apiService.getTestCases(
+            //     challengeId
+            //   );
 
-              if (
-                testCasesResponse.success &&
-                testCasesResponse.data &&
-                testCasesResponse.data.data
-              ) {
-                // Map API response to expected format
-                const mappedTestCases = testCasesResponse.data.data.map(
-                  (apiTestCase: any) => ({
-                    id: apiTestCase.id.toString(),
-                    input: apiTestCase.input_data,
-                    expectedOutput: apiTestCase.expected_output,
-                    isHidden: apiTestCase.is_hidden,
-                    points: apiTestCase.points,
-                  })
-                );
+            //   if (
+            //     testCasesResponse.success &&
+            //     testCasesResponse.data &&
+            //     testCasesResponse.data.data
+            //   ) {
+            //     // Map API response to expected format
+            //     const mappedTestCases = testCasesResponse.data.data.map(
+            //       (apiTestCase: any) => ({
+            //         id: apiTestCase.id.toString(),
+            //         input: apiTestCase.input_data,
+            //         expectedOutput: apiTestCase.expected_output,
+            //         isHidden: apiTestCase.is_hidden,
+            //         points: apiTestCase.points,
+            //       })
+            //     );
 
-                setTestCases(mappedTestCases);
-              } else {
-                console.log("Failed to get test cases:", testCasesResponse);
-              }
-            } catch (err) {
-              console.error("Error fetching test cases:", err);
-            }
+            //     setTestCases(mappedTestCases);
+            //   } else {
+            //     console.log("Failed to get test cases:", testCasesResponse);
+            //   }
+            // } catch (err) {
+            //   console.error("Error fetching test cases:", err);
+            // }
           } else {
             console.log(" Challenge not found");
             setError("Challenge not found");
@@ -273,7 +274,7 @@ export default function ContestChallengePage({
         challengeId,
         code,
         language,
-        token || "" ,
+        token || "",
         results
       );
 
@@ -300,12 +301,53 @@ export default function ContestChallengePage({
     [contestId, router]
   ); // Only recreate if these values change
 
-  const memoizedTestCases = useMemo(() => testCases, [testCases]);
+  const memoizedTestCases = useMemo(() => {
+    // Parse test cases from database if available
+    if (challenge?.test_cases) {
+      try {
+        const parsedTestCases = JSON.parse(challenge.test_cases);
+        return parsedTestCases.map(
+          (tc: {
+            id: string;
+            input: string;
+            expectedOutput: string;
+            isHidden: boolean;
+            points: number;
+          }) => ({
+            id: tc.id,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden,
+            points: tc.points,
+          })
+        );
+      } catch (error) {
+        console.error("Error parsing test cases:", error);
+        return sampleTestCases; // Fallback to sample data
+      }
+    }
+    return sampleTestCases; // Fallback to sample data
+  }, [challenge?.test_cases]);
+
+  const memoizedFunctionTemplates = useMemo(() => {
+    // Parse function templates from database if available
+    if (challenge?.function_templates) {
+      try {
+        const parsedTemplates = JSON.parse(challenge.function_templates);
+        return parsedTemplates;
+      } catch (error) {
+        console.error("Error parsing function templates:", error);
+        return sampleFunctionTemplates; // Fallback to sample data
+      }
+    }
+    return sampleFunctionTemplates; // Fallback to sample data
+  }, [challenge?.function_templates]);
 
   const parsedTags = useMemo(() => {
     if (!challenge?.tags) return [];
     try {
-      return JSON.parse(challenge.tags);
+      const parsed = JSON.parse(challenge.tags);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       return [];
     }
@@ -449,12 +491,8 @@ export default function ContestChallengePage({
           {/* Code Editor */}
           <div className="lg:col-span-4">
             <CodeEditor
-              testCases={
-                memoizedTestCases.length > 0
-                  ? memoizedTestCases
-                  : sampleTestCases
-              }
-              functionTemplates={sampleFunctionTemplates}
+              testCases={memoizedTestCases}
+              functionTemplates={memoizedFunctionTemplates}
               challengeId={challengeId}
               contestId={contestId}
               onSubmit={handleSubmit}

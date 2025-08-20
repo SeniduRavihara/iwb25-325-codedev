@@ -71,7 +71,7 @@ export default function ContestParticipatePage({
         }
 
         // Fetch challenges for this contest
-        const challengesResponse = await apiService.getChallenges();
+        const challengesResponse = await apiService.getChallengesForContest(contestId);
         if (
           challengesResponse.success &&
           challengesResponse.data &&
@@ -480,8 +480,9 @@ export default function ContestParticipatePage({
                           {challenge.difficulty}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {Math.floor(challenge.time_limit / 60)}min •{" "}
-                          {Math.round(challenge.success_rate * 100)}% success
+                          {Math.floor(challenge.time_limit / 60)}min
+                           {/* •{" "} */}
+                          {/* {Math.round(challenge.success_rate * 100)}% success */}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">

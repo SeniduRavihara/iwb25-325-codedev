@@ -364,96 +364,68 @@ export function CodeEditor({
       if (lang === "python") {
         // Python-specific input injection
         if (template.parameters.length === 1) {
-          const inputInjectionPattern =
-            /input_lines = sys\.stdin\.read\(\)\.strip\(\)\.split\('\\n'\)/;
-          const parameterAssignment = `${template.parameters[0]} = json.loads('${input}')`;
+          const parameterName = template.parameters[0];
+          const parameterAssignment = `${parameterName} = json.loads('${input}')`;
 
-          if (
-            executionCode.includes(
-              "input_lines = sys.stdin.read().strip().split('\\n')"
-            )
-          ) {
+          // Remove any hardcoded input assignments first
+          executionCode = executionCode.replace(
+            new RegExp(`${parameterName} = json\\.loads\\('[^']*'\\)`, "g"),
+            ""
+          );
+
+          // Find the line that reads from stdin and replace it
+          const stdinPattern = /input_line = sys\.stdin\.read\(\)\.strip\(\)/;
+          if (stdinPattern.test(executionCode)) {
             executionCode = executionCode.replace(
-              inputInjectionPattern,
+              stdinPattern,
               parameterAssignment
             );
           } else {
-            // If the pattern is not found, try to find and replace any existing parameter assignment
-            const existingPattern = new RegExp(
-              `${template.parameters[0]} = json\\.loads\\('[^']*'\\)`
+            // If no stdin reading, add the parameter assignment before the function call
+            const functionCallPattern = new RegExp(
+              `result = ${template.functionName}\\([^)]*\\)`
             );
-            if (existingPattern.test(executionCode)) {
-              executionCode = executionCode.replace(
-                existingPattern,
-                parameterAssignment
-              );
-            } else {
-              // Add the parameter assignment before the function call
-              const functionCallPattern = new RegExp(
-                `result = ${template.functionName}\\([^)]*\\)`
-              );
+            if (functionCallPattern.test(executionCode)) {
               executionCode = executionCode.replace(
                 functionCallPattern,
                 `${parameterAssignment}\n$&`
               );
             }
           }
+
+          console.log("✅ Python input injection successful");
         }
       } else if (lang === "java") {
         // Java-specific input injection
-        if (template.parameters.length === 1) {
-          // Replace the placeholder JSON with actual test input
-          const inputInjectionPattern = /String input = "\\[1,2,3\\]";/;
-          const parameterAssignment = `String input = "${input}";`;
+        const parameterName = template.parameters[0];
+        const inputInjection = `String input = "${input}";`;
 
-          if (inputInjectionPattern.test(executionCode)) {
-            executionCode = executionCode.replace(
-              inputInjectionPattern,
-              parameterAssignment
-            );
-          } else {
-            // Try to find existing assignment
-            const existingPattern = new RegExp(`String input = "[^"]*";`);
-            if (existingPattern.test(executionCode)) {
-              executionCode = executionCode.replace(
-                existingPattern,
-                parameterAssignment
-              );
-            }
-          }
-        }
+        // Replace the hardcoded input
+        executionCode = executionCode.replace(
+          /String input = "\[[^\]]*\]";/,
+          inputInjection
+        );
+
+        console.log("✅ Java input injection successful");
       } else if (lang === "ballerina") {
         // Ballerina-specific input injection
-        if (template.parameters.length === 1) {
-          // Replace the hardcoded array with actual test input
-          const inputInjectionPattern = /int\\[\\] nums = \\[1, 2, 3\\];/;
+        const parameterName = template.parameters[0];
 
-          // Parse the JSON input and convert to Ballerina array format
-          try {
-            const jsonArray = JSON.parse(input);
-            const ballerinaArray = jsonArray.join(", ");
-            const parameterAssignment = `int[] nums = [${ballerinaArray}];`;
+        // Parse the JSON input and convert to Ballerina array format
+        try {
+          const parsedInput = JSON.parse(input);
+          const ballerinaArray = `[${parsedInput.join(", ")}]`;
+          const arrayAssignment = `int[] ${parameterName} = ${ballerinaArray};`;
 
-            if (inputInjectionPattern.test(executionCode)) {
-              executionCode = executionCode.replace(
-                inputInjectionPattern,
-                parameterAssignment
-              );
-            } else {
-              // Try to find existing assignment
-              const existingPattern = new RegExp(
-                `int\\[\\] nums = \\[[^\\]]*\\];`
-              );
-              if (existingPattern.test(executionCode)) {
-                executionCode = executionCode.replace(
-                  existingPattern,
-                  parameterAssignment
-                );
-              }
-            }
-          } catch (e) {
-            console.log("Failed to parse input for Ballerina:", e);
-          }
+          // Replace the hardcoded array
+          executionCode = executionCode.replace(
+            new RegExp(`int\\[\\] ${parameterName} = \\[[^\\]]*\\];`),
+            arrayAssignment
+          );
+
+          console.log("✅ Ballerina input injection successful");
+        } catch (error) {
+          console.error("❌ Error parsing input for Ballerina:", error);
         }
       }
 

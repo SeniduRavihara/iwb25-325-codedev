@@ -211,13 +211,38 @@ public class DatabaseSeeder {
             return;
         }
 
-        // Link contests to challenges
-        sql:ExecutionResult|error result = self.dbClient->execute(`
+        // Link contests to challenges - add more relationships
+        sql:ExecutionResult|error result1 = self.dbClient->execute(`
             INSERT INTO contest_challenges (contest_id, challenge_id, points, order_index) 
             VALUES (1, 1, 100, 1)
         `);
-        if result is error {
-            return error("Failed to seed contest challenge relationship: " + result.message());
+        if result1 is error {
+            return error("Failed to seed contest challenge relationship 1: " + result1.message());
+        }
+
+        sql:ExecutionResult|error result2 = self.dbClient->execute(`
+            INSERT INTO contest_challenges (contest_id, challenge_id, points, order_index) 
+            VALUES (6, 6, 100, 1)
+        `);
+        if result2 is error {
+            return error("Failed to seed contest challenge relationship 2: " + result2.message());
+        }
+
+        // Add challenges to contest 16 (the one you're testing with)
+        sql:ExecutionResult|error result3 = self.dbClient->execute(`
+            INSERT INTO contest_challenges (contest_id, challenge_id, points, order_index) 
+            VALUES (16, 11, 100, 1)
+        `);
+        if result3 is error {
+            return error("Failed to seed contest challenge relationship 3: " + result3.message());
+        }
+
+        sql:ExecutionResult|error result4 = self.dbClient->execute(`
+            INSERT INTO contest_challenges (contest_id, challenge_id, points, order_index) 
+            VALUES (16, 10, 100, 2)
+        `);
+        if result4 is error {
+            return error("Failed to seed contest challenge relationship 4: " + result4.message());
         }
 
         io:println("✓ Contest-challenge relationships seeded successfully");

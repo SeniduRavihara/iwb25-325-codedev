@@ -21,6 +21,26 @@ export default function CreateContestPage() {
   const { isAuthenticated, user, token } = useAuth();
   const router = useRouter();
 
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    startTime: "",
+    duration: 120,
+    maxParticipants: 100,
+    registrationDeadline: "",
+    rules: "",
+    prizes: [] as string[],
+    newPrize: "",
+  });
+
+  const [selectedChallenges, setSelectedChallenges] = useState<number[]>([]);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [loadingChallenges, setLoadingChallenges] = useState(true);
+  const [challengesError, setChallengesError] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   // Redirect to login if not authenticated, or to home if not admin
   useEffect(() => {
     if (!isAuthenticated) {
@@ -75,23 +95,6 @@ export default function CreateContestPage() {
     );
   }
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    startTime: "",
-    duration: 120,
-    maxParticipants: 100,
-    registrationDeadline: "",
-    rules: "",
-    prizes: [] as string[],
-    newPrize: "",
-  });
-
-  const [selectedChallenges, setSelectedChallenges] = useState<string[]>([]);
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [loadingChallenges, setLoadingChallenges] = useState(true);
-  const [challengesError, setChallengesError] = useState<string | null>(null);
-
   const addPrize = () => {
     if (
       formData.newPrize.trim() &&
@@ -112,16 +115,13 @@ export default function CreateContestPage() {
     });
   };
 
-  const toggleChallenge = (challengeId: string) => {
+  const toggleChallenge = (challengeId: number) => {
     setSelectedChallenges((prev) =>
       prev.includes(challengeId)
         ? prev.filter((id) => id !== challengeId)
         : [...prev, challengeId]
     );
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +193,21 @@ export default function CreateContestPage() {
       const response = await apiService.createContest(contestData, token);
 
       if (response.success) {
+        console.log(selectedChallenges, response.data.data.contest_id);
+
         // TODO: Link selected challenges to the contest
+        const linkResponse = await apiService.linkChallengesToContest(
+          response.data.data.contest_id,
+          selectedChallenges,
+          token
+        );
+        if (linkResponse.success) {
+          router.push("/admin/contests?success=true");
+        } else {
+          setSubmitError(
+            linkResponse.message || "Failed to link challenges to contest"
+          );
+        }
         // For now, just redirect to contests list with success message
         router.push("/admin/contests?success=true");
       } else {
@@ -396,12 +410,8 @@ export default function CreateContestPage() {
                       >
                         <Checkbox
                           id={`challenge-${challenge.id}`}
-                          checked={selectedChallenges.includes(
-                            challenge.id.toString()
-                          )}
-                          onCheckedChange={() =>
-                            toggleChallenge(challenge.id.toString())
-                          }
+                          checked={selectedChallenges.includes(challenge.id)}
+                          onCheckedChange={() => toggleChallenge(challenge.id)}
                           className="border-2 border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <div className="flex-1">
@@ -441,6 +451,7 @@ export default function CreateContestPage() {
                                     {tag}
                                   </Badge>
                                 ));
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                               } catch (error) {
                                 return (
                                   <span className="text-muted-foreground text-xs">

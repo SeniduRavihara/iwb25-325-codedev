@@ -232,6 +232,11 @@ public MigrationInfo[] MIGRATIONS = [
         version: 7,
         name: "007_create_submissions_table",
         execute: createSubmissionsTable
+    },
+    {
+        version: 8,
+        name: "008_add_function_templates_to_challenges",
+        execute: addFunctionTemplatesToChallenges
     }
 ];
 
