@@ -399,6 +399,39 @@ export function CodeEditor({
     }
   };
 
+  // Helper function to format test case input for display
+  const formatTestInputForDisplay = (
+    input: string,
+    parameters: string[]
+  ): string => {
+    try {
+      // Handle literal \n characters in the input string
+      const normalizedInput = input.replace(/\\n/g, "\n");
+
+      // Split input by newline to get individual parameter values
+      const inputLines = normalizedInput.split("\n");
+
+      // Create formatted parameter assignments
+      const formattedParams = parameters
+        .map((param, index) => {
+          const inputValue = inputLines[index] || "";
+          if (!inputValue.trim()) {
+            return `${param} = None`;
+          }
+
+          const convertedValue = convertJsonToPythonSyntax(inputValue);
+          return `${param} = ${convertedValue}`;
+        })
+        .join("\n");
+
+      return formattedParams;
+    } catch (error) {
+      console.error("Error formatting test input:", error);
+      // Fallback to original input
+      return input;
+    }
+  };
+
   // Helper function to create parameter assignments for the new approach
   const createParameterAssignments = (
     parameters: string[],
@@ -926,7 +959,12 @@ export function CodeEditor({
                             Input:
                           </div>
                           <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
-                            {result.testCase.input}
+                            {formatTestInputForDisplay(
+                              result.testCase.input,
+                              functionTemplates.find(
+                                (t) => t.language === language
+                              )?.parameters || []
+                            )}
                           </pre>
                         </div>
                         <div>
