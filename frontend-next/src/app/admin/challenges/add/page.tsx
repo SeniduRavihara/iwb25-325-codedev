@@ -150,33 +150,17 @@ export default function AddChallengePage() {
 
     switch (language) {
       case "python":
-        if (parameters.length === 1) {
-          template = `# Execution template
-import json
-import sys
+        template = `# Execution template
 
 ${currentTemplate.starterCode}
 
 # Test execution wrapper
-input_line = sys.stdin.read().strip()
-${parameters[0]} = json.loads(input_line)
+
+REPLACE_PARAMETERS0101
+
 result = ${functionName}(${parameters[0]})
 print(result)`;
-        } else {
-          template = `# Execution template
-import json
-import sys
-
-${currentTemplate.starterCode}
-
-# Test execution wrapper
-input_lines = sys.stdin.read().strip().split('\\n')
-${parameters
-  .map((param, i) => `${param} = json.loads(input_lines[${i}])`)
-  .join("\n")}
-result = ${functionName}(${parameters.join(", ")})
-print(result)`;
-        }
+// -----------------------------------------------------------
         break;
       case "javascript":
         template = `// Execution template

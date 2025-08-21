@@ -281,7 +281,7 @@ export function CodeEditor({
   ): string => {
     // Find the function template for the current language
     const template = functionTemplates.find((t) => t.language === lang);
-    console.log("TEMPLATE", template);
+    // console.log("TEMPLATE", template);
 
     if (!template) {
       // Fallback: return user code as-is if no template found
@@ -293,13 +293,13 @@ export function CodeEditor({
       let executionCode = template.executionTemplate;
 
       // Debug: Log the replacement process
-      console.log("🔧 REPLACEMENT DEBUG:");
-      console.log(
-        "Template starter code:",
-        JSON.stringify(template.starterCode)
-      );
-      console.log("User code:", JSON.stringify(userCode));
-      console.log("Execution template before replacement:", executionCode);
+      // console.log("🔧 REPLACEMENT DEBUG:");
+      // console.log(
+      //   "Template starter code:",
+      //   JSON.stringify(template.starterCode)
+      // );
+      // console.log("User code:", JSON.stringify(userCode));
+      // console.log("Execution template before replacement:", executionCode);
 
       // Replace the placeholder function in execution template with user's complete function
       const placeholderInExecution = template.starterCode;
@@ -362,85 +362,238 @@ export function CodeEditor({
         }
       }
 
-      console.log("Execution template after replacement:", executionCode);
-
-      // Inject the test case input as function parameters based on language
-      if (lang === "python") {
-        // Python-specific input injection
-        if (template.parameters.length === 1) {
-          const parameterName = template.parameters[0];
-          const parameterAssignment = `${parameterName} = json.loads('${input}')`;
-
-          // Remove any hardcoded input assignments first
-          executionCode = executionCode.replace(
-            new RegExp(`${parameterName} = json\\.loads\\('[^']*'\\)`, "g"),
-            ""
-          );
-
-          // Find the line that reads from stdin and replace it
-          const stdinPattern = /input_line = sys\.stdin\.read\(\)\.strip\(\)/;
-          if (stdinPattern.test(executionCode)) {
-            executionCode = executionCode.replace(
-              stdinPattern,
-              parameterAssignment
-            );
-          } else {
-            // If no stdin reading, add the parameter assignment before the function call
-            const functionCallPattern = new RegExp(
-              `result = ${template.functionName}\\([^)]*\\)`
-            );
-            if (functionCallPattern.test(executionCode)) {
-              executionCode = executionCode.replace(
-                functionCallPattern,
-                `${parameterAssignment}\n$&`
-              );
-            }
-          }
-
-          console.log("✅ Python input injection successful");
-        }
-      } else if (lang === "java") {
-        // Java-specific input injection
-        const parameterName = template.parameters[0];
-        const inputInjection = `String input = "${input}";`;
-
-        // Replace the hardcoded input
-        executionCode = executionCode.replace(
-          /String input = "\[[^\]]*\]";/,
-          inputInjection
+      // NEW APPROACH: Replace REPLACE_PARAMETERS0101 with actual parameter assignments
+      if (executionCode.includes("REPLACE_PARAMETERS0101")) {
+        const parameterAssignments = createParameterAssignments(
+          template.parameters,
+          input,
+          lang
         );
 
-        console.log("✅ Java input injection successful");
-      } else if (lang === "ballerina") {
-        // Ballerina-specific input injection
-        const parameterName = template.parameters[0];
+        executionCode = executionCode.replace(
+          "REPLACE_PARAMETERS0101",
+          parameterAssignments
+        );
 
-        // Parse the JSON input and convert to Ballerina array format
-        try {
-          const parsedInput = JSON.parse(input);
-          const ballerinaArray = `[${parsedInput.join(", ")}]`;
-          const arrayAssignment = `int[] ${parameterName} = ${ballerinaArray};`;
-
-          // Replace the hardcoded array
-          executionCode = executionCode.replace(
-            new RegExp(`int\\[\\] ${parameterName} = \\[[^\\]]*\\];`),
-            arrayAssignment
-          );
-
-          console.log("✅ Ballerina input injection successful");
-        } catch (error) {
-          console.error("❌ Error parsing input for Ballerina:", error);
-        }
+        console.log("✅ REPLACE_PARAMETERS0101 replacement successful");
+        console.log("Parameter assignments:", parameterAssignments);
+      } else {
+        console.log(
+          "⚠️ REPLACE_PARAMETERS0101 placeholder not found, using fallback"
+        );
+        // Fallback to old approach for backward compatibility
+        executionCode = injectInputUsingOldApproach(
+          executionCode,
+          input,
+          lang,
+          template
+        );
       }
 
-      console.log("TEMPLATE", executionCode);
-
+      console.log("FINAL TEMPLATE", executionCode);
       return executionCode;
     } catch (error) {
       console.error("Error creating test code:", error);
       // Fallback to user code if template processing fails
       return userCode;
     }
+  };
+
+  // Helper function to create parameter assignments for the new approach
+  const createParameterAssignments = (
+    parameters: string[],
+    input: string,
+    lang: string
+  ): string => {
+    // console.log("🔍 DEBUG: Input received:", JSON.stringify(input));
+    // console.log("🔍 DEBUG: Parameters:", parameters);
+
+    // Handle literal \n characters in the input string
+    const normalizedInput = input.replace(/\\n/g, "\n");
+    // console.log("🔍 DEBUG: Normalized input:", JSON.stringify(normalizedInput));
+
+    // Split input by newline to get individual parameter values
+    const inputLines = normalizedInput.split("\n");
+    // console.log("🔍 DEBUG: Input lines:", inputLines);
+
+    return parameters
+      .map((param, index) => {
+        const inputValue = inputLines[index] || "";
+        // console.log(`🔍 DEBUG: Parameter ${param} = "${inputValue}"`);
+
+        // Handle empty input values
+        if (!inputValue.trim()) {
+          // console.log(`⚠️ WARNING: Empty input for parameter ${param}`);
+          return `${param} = None`;
+        }
+
+        const convertedValue = convertJsonToPythonSyntax(inputValue);
+        // console.log(`🔍 DEBUG: Converted value for ${param}:`, convertedValue);
+        return `${param} = ${convertedValue}`;
+      })
+      .join("\n");
+  };
+
+  // Helper function to convert JSON string to Python syntax
+  const convertJsonToPythonSyntax = (jsonString: string): string => {
+    // console.log(
+    //   "🔍 DEBUG: Converting JSON string:",
+    //   JSON.stringify(jsonString)
+    // );
+
+    try {
+      // Clean the input string - remove any extra whitespace
+      const cleanedString = jsonString.trim();
+
+      // Handle empty or null input
+      if (!cleanedString || cleanedString === "null") {
+        return "None";
+      }
+
+      // Try to parse as JSON
+      const parsed = JSON.parse(cleanedString);
+      // console.log("🔍 DEBUG: Parsed JSON:", parsed);
+
+      // Convert to Python syntax based on type
+      if (Array.isArray(parsed)) {
+        return `[${parsed.join(", ")}]`;
+      } else if (typeof parsed === "string") {
+        return `"${parsed}"`;
+      } else if (typeof parsed === "boolean") {
+        return parsed ? "True" : "False";
+      } else if (typeof parsed === "number") {
+        return parsed.toString();
+      } else if (parsed === null) {
+        return "None";
+      } else {
+        // For objects, convert to Python dict
+        const entries = Object.entries(parsed).map(([key, value]) => {
+          const valueStr = typeof value === "string" ? `"${value}"` : value;
+          return `"${key}": ${valueStr}`;
+        });
+        return `{${entries.join(", ")}}`;
+      }
+    } catch (error) {
+      console.error("❌ Error converting JSON to Python syntax:", error);
+      console.error("❌ Problematic string:", JSON.stringify(jsonString));
+
+      // Fallback: try to handle common cases
+      const cleanedString = jsonString.trim();
+
+      // If it looks like a number, return as number
+      if (/^-?\d+(\.\d+)?$/.test(cleanedString)) {
+        return cleanedString;
+      }
+
+      // If it looks like a boolean, convert
+      if (cleanedString.toLowerCase() === "true") {
+        return "True";
+      }
+      if (cleanedString.toLowerCase() === "false") {
+        return "False";
+      }
+
+      // If it looks like an array (starts with [ and ends with ])
+      if (cleanedString.startsWith("[") && cleanedString.endsWith("]")) {
+        // Try to extract array elements
+        try {
+          const arrayContent = cleanedString.slice(1, -1);
+          const elements = arrayContent.split(",").map((el) => el.trim());
+          return `[${elements.join(", ")}]`;
+        } catch (e) {
+          console.error("❌ Failed to parse array:", e);
+        }
+      }
+
+      // If it looks like a string (starts and ends with quotes)
+      if (
+        (cleanedString.startsWith('"') && cleanedString.endsWith('"')) ||
+        (cleanedString.startsWith("'") && cleanedString.endsWith("'"))
+      ) {
+        return cleanedString;
+      }
+
+      // Last resort: return as string
+      return `"${cleanedString}"`;
+    }
+  };
+
+  // Fallback function for old approach (backward compatibility)
+  const injectInputUsingOldApproach = (
+    executionCode: string,
+    input: string,
+    lang: string,
+    template: any
+  ): string => {
+    if (lang === "python") {
+      // Python-specific input injection
+      if (template.parameters.length === 1) {
+        const parameterName = template.parameters[0];
+        const parameterAssignment = `${parameterName} = json.loads('${input}')`;
+
+        // Remove any hardcoded input assignments first
+        executionCode = executionCode.replace(
+          new RegExp(`${parameterName} = json\\.loads\\('[^']*'\\)`, "g"),
+          ""
+        );
+
+        // Find the line that reads from stdin and replace it
+        const stdinPattern = /input_line = sys\.stdin\.read\(\)\.strip\(\)/;
+        if (stdinPattern.test(executionCode)) {
+          executionCode = executionCode.replace(
+            stdinPattern,
+            parameterAssignment
+          );
+        } else {
+          // If no stdin reading, add the parameter assignment before the function call
+          const functionCallPattern = new RegExp(
+            `result = ${template.functionName}\\([^)]*\\)`
+          );
+          if (functionCallPattern.test(executionCode)) {
+            executionCode = executionCode.replace(
+              functionCallPattern,
+              `${parameterAssignment}\n$&`
+            );
+          }
+        }
+
+        console.log("✅ Python input injection successful (fallback)");
+      }
+    } else if (lang === "java") {
+      // Java-specific input injection
+      const parameterName = template.parameters[0];
+      const inputInjection = `String input = "${input}";`;
+
+      // Replace the hardcoded input
+      executionCode = executionCode.replace(
+        /String input = "\[[^\]]*\]";/,
+        inputInjection
+      );
+
+      console.log("✅ Java input injection successful (fallback)");
+    } else if (lang === "ballerina") {
+      // Ballerina-specific input injection
+      const parameterName = template.parameters[0];
+
+      // Parse the JSON input and convert to Ballerina array format
+      try {
+        const parsedInput = JSON.parse(input);
+        const ballerinaArray = `[${parsedInput.join(", ")}]`;
+        const arrayAssignment = `int[] ${parameterName} = ${ballerinaArray};`;
+
+        // Replace the hardcoded array
+        executionCode = executionCode.replace(
+          new RegExp(`int\\[\\] ${parameterName} = \\[[^\\]]*\\];`),
+          arrayAssignment
+        );
+
+        console.log("✅ Ballerina input injection successful (fallback)");
+      } catch (error) {
+        console.error("❌ Error parsing input for Ballerina:", error);
+      }
+    }
+
+    return executionCode;
   };
 
   const submitCode = async () => {
