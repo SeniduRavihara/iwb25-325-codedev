@@ -21,18 +21,35 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   // Redirect to login if not authenticated or not admin
   useEffect(() => {
+    // Wait for AuthContext to finish loading
+    if (isLoading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       router.push("/login");
     } else if (user?.role !== "admin") {
       router.push("/");
     }
-  }, [isAuthenticated, user?.role, router]);
+  }, [isAuthenticated, user?.role, router, isLoading]);
+
+  // Show loading if AuthContext is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading if not authenticated or not admin
   if (!isAuthenticated || user?.role !== "admin") {

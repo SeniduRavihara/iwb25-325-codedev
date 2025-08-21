@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { navigationUtils } from "@/lib/utils";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ export function ProtectedRoute({
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
   const [hasRedirected, setHasRedirected] = useState(false);
+  const redirectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Set client flag to prevent hydration mismatch
   useEffect(() => {
@@ -29,19 +30,34 @@ export function ProtectedRoute({
 
   useEffect(() => {
     if (!isLoading && isClient && !hasRedirected) {
-      // If user is authenticated and trying to access auth pages, redirect to home
-      if (isAuthenticated && requireAuth === false) {
-        setHasRedirected(true);
-        router.replace(redirectTo);
+      // Clear any existing timeout
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
       }
-      // If user is not authenticated and trying to access protected pages, redirect to login
-      else if (!isAuthenticated && requireAuth === true) {
-        setHasRedirected(true);
-        // Store the current path to redirect back after login
-        navigationUtils.storeRedirectPath(pathname);
-        router.replace("/login");
-      }
+
+      // Add a small delay to prevent rapid redirects
+      redirectTimeoutRef.current = setTimeout(() => {
+        // If user is authenticated and trying to access auth pages, redirect to home
+        if (isAuthenticated && requireAuth === false) {
+          setHasRedirected(true);
+          router.replace(redirectTo);
+        }
+        // If user is not authenticated and trying to access protected pages, redirect to login
+        else if (!isAuthenticated && requireAuth === true) {
+          setHasRedirected(true);
+          // Store the current path to redirect back after login
+          navigationUtils.storeRedirectPath(pathname);
+          router.replace("/login");
+        }
+      }, 100); // Small delay to prevent rapid redirects
     }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
   }, [
     isAuthenticated,
     isLoading,
@@ -52,6 +68,11 @@ export function ProtectedRoute({
     hasRedirected,
     pathname,
   ]);
+
+  // Reset redirect flag when authentication state changes
+  useEffect(() => {
+    setHasRedirected(false);
+  }, [isAuthenticated]);
 
   // Show loading state while checking authentication or during SSR
   if (isLoading || !isClient) {

@@ -18,8 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 // import { Chrome, Github } from "lucide-react"; // Commented out - used for social login buttons
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +28,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
+
+  // Handle redirect parameter from middleware
+  useEffect(() => {
+    const redirect = searchParams.get("redirect");
+    if (redirect) {
+      // Store the redirect path for after login
+      sessionStorage.setItem("redirectAfterLogin", redirect);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,64 +117,19 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <Link href="#" className="text-sm text-primary hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
-            {/* GitHub and Google login buttons - currently commented out */}
-            {/*
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="w-full bg-transparent border-2 border-border hover:border-primary"
-              >
-                <Github className="mr-2 h-4 w-4" />
-                GitHub
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full bg-transparent border-2 border-border hover:border-primary"
-              >
-                <Chrome className="mr-2 h-4 w-4" />
-                Google
-              </Button>
-            </div>
-            */}
-
-            <div className="text-center text-sm">
-              <span className="text-muted-foreground">
-                Don&apos;t have an account?{" "}
-              </span>
+            <div className="text-center text-sm text-muted-foreground">
+              Don't have an account?{" "}
               <Link
                 href="/signup"
                 className="text-primary hover:underline font-medium"
               >
                 Sign up
               </Link>
-            </div>
-
-            <div className="text-xs text-muted-foreground text-center space-y-1">
-              <p>Demo credentials:</p>
-              <p>Admin: admin / password</p>
-              <p>User: john / password</p>
             </div>
           </CardContent>
         </Card>

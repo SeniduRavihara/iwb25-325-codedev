@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ContestsPage() {
-  const { isAuthenticated, user, token } = useAuth();
+  const { isAuthenticated, user, token, isLoading } = useAuth();
   const router = useRouter();
   const [contests, setContests] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,12 @@ export default function ContestsPage() {
   // Fetch contests from API and check registration status
   useEffect(() => {
     const fetchContests = async () => {
-      if (!token) {
+      // Wait for AuthContext to finish loading
+      if (isLoading) {
+        return;
+      }
+
+      if (!token || !isAuthenticated) {
         router.push("/login");
         return;
       }
@@ -98,9 +103,20 @@ export default function ContestsPage() {
     };
 
     fetchContests();
-  }, [isAuthenticated, router, token]);
+  }, [token, isAuthenticated, isLoading, router]);
 
   // Show loading or redirect if not authenticated
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

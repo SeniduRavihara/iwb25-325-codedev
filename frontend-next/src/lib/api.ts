@@ -553,6 +553,17 @@ class ApiService {
     });
   }
 
+  async getCodeTemplates(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: CodeTemplateCreate[] }>> {
+    return this.request<{ data: CodeTemplateCreate[] }>(
+      `/challenges/${challengeId}/templates`,
+      {
+        method: "GET",
+      }
+    );
+  }
+
   async createBulkCodeTemplates(
     challengeId: number,
     templates: BulkCodeTemplateCreate,

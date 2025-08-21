@@ -24,7 +24,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   loading: () => <div className="h-96 bg-muted animate-pulse rounded-md" />,
 }) as any;
 
-interface FunctionTemplate {
+export interface FunctionTemplate {
   language: string;
   functionName: string;
   parameters: string[];

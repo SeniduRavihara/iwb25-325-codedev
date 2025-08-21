@@ -1,12 +1,17 @@
 "use client";
 
-import { CodeEditor } from "@/components/code-editor";
+import { CodeEditor, FunctionTemplate } from "@/components/code-editor";
 import { Navigation } from "@/components/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiService, type Challenge, type Contest } from "@/lib/api";
+import {
+  apiService,
+  CodeTemplateCreate,
+  type Challenge,
+  type Contest,
+} from "@/lib/api";
 import { type TestCase } from "@/lib/mock-data";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -34,74 +39,106 @@ export default function ContestChallengePage({
   } | null>(null);
 
   // Sample function templates for testing
-  const sampleFunctionTemplates = [
-    {
-      language: "python",
-      functionName: "max_subarray_sum",
-      parameters: ["nums"],
-      returnType: "int",
-      starterCode:
-        "def max_subarray_sum(nums):\n    # Write your solution here\n    pass",
-      executionTemplate:
-        "# Execution template\nimport json\nimport sys\n\ndef max_subarray_sum(nums):\n    # Write your solution here\n    pass\n\n# Test execution wrapper\ninput_lines = sys.stdin.read().strip().split('\\n')\n\nresult = max_subarray_sum(nums)\nprint(result)",
-    },
-    {
-      language: "java",
-      functionName: "maxSubarraySum",
-      parameters: ["nums"],
-      returnType: "int",
-      starterCode:
-        "public static int maxSubarraySum(int[] nums) {\n    // Write your solution here\n    return 0;\n}",
-      executionTemplate:
-        'import java.util.*;\n\npublic class Main {\n    public static int maxSubarraySum(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n    \n    public static void main(String[] args) {\n        try {\n            // Parse input array from string like "[1,2,3]"\n            String input = "[1,2,3]";\n            input = input.substring(1, input.length() - 1); // Remove [ and ]\n            String[] parts = input.split(",");\n            int[] nums = new int[parts.length];\n            for (int i = 0; i < parts.length; i++) {\n                nums[i] = Integer.parseInt(parts[i].trim());\n            }\n            \n            int result = maxSubarraySum(nums);\n            System.out.println(result);\n        } catch (Exception e) {\n            System.err.println("Error: " + e.getMessage());\n        }\n    }\n}',
-    },
-    {
-      language: "ballerina",
-      functionName: "maxSubarraySum",
-      parameters: ["nums"],
-      returnType: "int",
-      starterCode:
-        "public function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}",
-      executionTemplate:
-        "import ballerina/io;\n\npublic function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}\n\npublic function main() returns error? {\n    // Simple test with hardcoded array\n    int[] nums = [1, 2, 3];\n    int result = maxSubarraySum(nums);\n    io:println(result);\n}",
-    },
-  ];
-
-  // Sample test cases for testing
-  const sampleTestCases: TestCase[] = [
-    {
-      id: "1",
-      input: "[-2,1,-3,4,-1,2,1,-5,4]",
-      expectedOutput: "6",
-      isHidden: false,
-      points: 25,
-    },
-    {
-      id: "2",
-      input: "[-1,-2,-3,-4]",
-      expectedOutput: "-1",
-      isHidden: false,
-      points: 25,
-    },
-    {
-      id: "3",
-      input: "[1,2,3,4,5]",
-      expectedOutput: "15",
-      isHidden: false,
-      points: 25,
-    },
-    {
-      id: "4",
-      input: "[5]",
-      expectedOutput: "5",
-      isHidden: false,
-      points: 25,
-    },
-  ];
+  // const sampleFunctionTemplates = [
+  //   {
+  //     language: "python",
+  //     functionName: "max_subarray_sum",
+  //     parameters: ["nums"],
+  //     returnType: "int",
+  //     starterCode:
+  //       "def max_subarray_sum(nums):\n    # Write your solution here\n    pass",
+  //     executionTemplate:
+  //       "# Execution template\nimport json\nimport sys\n\ndef max_subarray_sum(nums):\n    # Write your solution here\n    pass\n\n# Test execution wrapper\ninput_lines = sys.stdin.read().strip().split('\\n')\n\nresult = max_subarray_sum(nums)\nprint(result)",
+  //   },
+  //   {
+  //     language: "java",
+  //     functionName: "maxSubarraySum",
+  //     parameters: ["nums"],
+  //     returnType: "int",
+  //     starterCode:
+  //       "public static int maxSubarraySum(int[] nums) {\n    // Write your solution here\n    return 0;\n}",
+  //     executionTemplate:
+  //       'import java.util.*;\n\npublic class Main {\n    public static int maxSubarraySum(int[] nums) {\n        // Write your solution here\n        return 0;\n    }\n    \n    public static void main(String[] args) {\n        try {\n            // Parse input array from string like "[1,2,3]"\n            String input = "[1,2,3]";\n            input = input.substring(1, input.length() - 1); // Remove [ and ]\n            String[] parts = input.split(",");\n            int[] nums = new int[parts.length];\n            for (int i = 0; i < parts.length; i++) {\n                nums[i] = Integer.parseInt(parts[i].trim());\n            }\n            \n            int result = maxSubarraySum(nums);\n            System.out.println(result);\n        } catch (Exception e) {\n            System.err.println("Error: " + e.getMessage());\n        }\n    }\n}',
+  //   },
+  //   {
+  //     language: "ballerina",
+  //     functionName: "maxSubarraySum",
+  //     parameters: ["nums"],
+  //     returnType: "int",
+  //     starterCode:
+  //       "public function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}",
+  //     executionTemplate:
+  //       "import ballerina/io;\n\npublic function maxSubarraySum(int[] nums) returns int {\n    // Write your solution here\n    return 0;\n}\n\npublic function main() returns error? {\n    // Simple test with hardcoded array\n    int[] nums = [1, 2, 3];\n    int result = maxSubarraySum(nums);\n    io:println(result);\n}",
+  //   },
+  // ];
 
   const resolvedParams = use(params);
   const contestId = parseInt(resolvedParams.id);
   const challengeId = parseInt(resolvedParams.challengeId);
+
+  const [functionTemplates, setFunctionTemplates] = useState<
+    FunctionTemplate[]
+  >([]);
+
+  useEffect(() => {
+    console.log("functionTemplates", functionTemplates);
+    console.log("testCases", testCases);
+  }, [functionTemplates, testCases]);
+
+  const getFunctionTemplates = async () => {
+    try {
+      const response = await apiService.getCodeTemplates(challengeId);
+      if (response.success && response.data && response.data.data) {
+        setFunctionTemplates(
+          response.data.data.map((ft: CodeTemplateCreate) => ({
+            language: ft.language,
+            functionName: ft.function_name,
+            parameters: JSON.parse(ft.parameters),
+            returnType: ft.return_type,
+            starterCode: ft.starter_code,
+            executionTemplate: ft.execution_template,
+          }))
+        );
+      } else {
+        setError(response.message || "Failed to fetch function templates");
+      }
+    } catch (error) {
+      console.error("Error fetching function templates:", error);
+    }
+  };
+
+  const getTestCases = async () => {
+    try {
+      const testCasesResponse = await apiService.getTestCases(challengeId);
+
+      console.log("testCasesResponse", testCasesResponse);
+
+      if (
+        testCasesResponse.success &&
+        testCasesResponse.data &&
+        testCasesResponse.data.data
+      ) {
+        // Map API response to expected format
+        const mappedTestCases = testCasesResponse.data.data.map(
+          (apiTestCase: any) => ({
+            id: apiTestCase.id.toString(),
+            input: apiTestCase.input_data,
+            expectedOutput: apiTestCase.expected_output,
+            isHidden: apiTestCase.is_hidden,
+            points: apiTestCase.points,
+          })
+        );
+
+        // console.log("mappedTestCases", mappedTestCases);
+
+        setTestCases(mappedTestCases);
+      } else {
+        console.log("Failed to get test cases:", testCasesResponse);
+      }
+    } catch (err) {
+      console.error("Error fetching test cases:", err);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -161,9 +198,12 @@ export default function ContestChallengePage({
             setError("Contest not found");
           }
         } else {
+          setError("Contest not found");
         }
         // Fetch challenge details
-        const challengesResponse = await apiService.getChallengesForContest(contestId);
+        const challengesResponse = await apiService.getChallengesForContest(
+          contestId
+        );
 
         if (
           challengesResponse.success &&
@@ -178,38 +218,8 @@ export default function ContestChallengePage({
             setChallenge(foundChallenge);
             console.log("foundChallenge", foundChallenge);
 
-            try {
-              const testCasesResponse = await apiService.getTestCases(
-                challengeId
-              );
-
-              console.log("testCasesResponse", testCasesResponse);
-
-              if (
-                testCasesResponse.success &&
-                testCasesResponse.data &&
-                testCasesResponse.data.data
-              ) {
-                // Map API response to expected format
-                const mappedTestCases = testCasesResponse.data.data.map(
-                  (apiTestCase: any) => ({
-                    id: apiTestCase.id.toString(),
-                    input: apiTestCase.input_data,
-                    expectedOutput: apiTestCase.expected_output,
-                    isHidden: apiTestCase.is_hidden,
-                    points: apiTestCase.points,
-                  })
-                );
-
-                console.log("mappedTestCases", mappedTestCases);
-
-                setTestCases(mappedTestCases);
-              } else {
-                console.log("Failed to get test cases:", testCasesResponse);
-              }
-            } catch (err) {
-              console.error("Error fetching test cases:", err);
-            }
+            await getFunctionTemplates();
+            await getTestCases();
           } else {
             console.log(" Challenge not found");
             setError("Challenge not found");
@@ -284,7 +294,7 @@ export default function ContestChallengePage({
         code,
         language,
         token,
-        results,
+        results
       );
 
       // Show success message since results are stored in localStorage
@@ -309,22 +319,6 @@ export default function ContestChallengePage({
     },
     [challengeId, contestId, router, token]
   ); // Only recreate if these values change
-
-
-
-  const memoizedFunctionTemplates = useMemo(() => {
-    // Parse function templates from database if available
-    if (challenge?.function_templates) {
-      try {
-        const parsedTemplates = JSON.parse(challenge.function_templates);
-        return parsedTemplates;
-      } catch (error) {
-        console.error("Error parsing function templates:", error);
-        return sampleFunctionTemplates; // Fallback to sample data
-      }
-    }
-    return sampleFunctionTemplates; // Fallback to sample data
-  }, [challenge?.function_templates]);
 
   const parsedTags = useMemo(() => {
     if (!challenge?.tags) return [];
@@ -475,7 +469,7 @@ export default function ContestChallengePage({
           <div className="lg:col-span-4">
             <CodeEditor
               testCases={testCases}
-              functionTemplates={memoizedFunctionTemplates}
+              functionTemplates={functionTemplates}
               challengeId={challengeId}
               contestId={contestId}
               onSubmit={handleSubmit}
