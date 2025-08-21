@@ -35,8 +35,8 @@ export interface FunctionTemplate {
 
 interface CodeEditorProps {
   testCases: TestCase[];
-  challengeId?: number; // Add challengeId prop
-  contestId?: number; // Add contestId prop
+  // challengeId?: number; // Add challengeId prop
+  // contestId?: number; // Add contestId prop
   functionTemplates?: FunctionTemplate[]; // Add function templates prop
   onSubmit: (
     code: string,
@@ -86,18 +86,12 @@ const languageExtensions = {
 
 export function CodeEditor({
   testCases,
-  challengeId,
-  contestId,
   functionTemplates = [], // Default to empty array
   onSubmit,
   initialCode,
   initialLanguage = "python",
 }: CodeEditorProps) {
   const { user, token } = useAuth();
-  // Only log on mount or when testCases change significantly
-  // Remove the console.log to clean up the output
-
-  // console.log("RAVII", functionTemplates);
 
   // Get initial code from function template if available, otherwise use language template
   const getInitialCode = () => {
@@ -124,7 +118,9 @@ export function CodeEditor({
     if (template && !initialCode && functionTemplates.length > 0) {
       setCode(template.starterCode);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [functionTemplates.length]); // Only run when functionTemplates array length changes (initial load)
+
   const [isRunning, setIsRunning] = useState(false);
   const [executionResult, setExecutionResult] =
     useState<CodeExecutionResponse | null>(null);
@@ -189,20 +185,28 @@ export function CodeEditor({
     setTestResults([]);
 
     try {
-      // First, run the code to see if it compiles/executes
-      const response = await apiService.executeCode({
-        code: code.trim(),
-        language: language,
-      });
+      // Check if we have test cases to run against
+      const visibleTestCases = testCases.filter((tc) => !tc.isHidden);
 
-      if (response.success && response.data) {
-        setExecutionResult(response.data);
-
-        // Now run against test cases
-        await runTestCases();
-      } else {
-        setError(response.message || "Failed to execute code");
+      if (visibleTestCases.length === 0) {
+        setError(
+          "No test cases available to run. Please add test cases to this challenge."
+        );
+        return;
       }
+
+      // IMPORTANT: We always run against test cases because:
+      // 1. Starter code is just function definitions (not executable standalone)
+      // 2. We need input data to test the function
+      // 3. The execution template provides the proper test harness
+      await runTestCases();
+
+      // Set a success message for the execution result
+      setExecutionResult({
+        success: true,
+        output: `Code executed successfully against ${visibleTestCases.length} test case(s)`,
+        executionTime: { milliseconds: 0, seconds: 0 },
+      });
     } catch (err) {
       setError("Network error occurred while executing code");
       console.error("Code execution error:", err);
@@ -214,8 +218,6 @@ export function CodeEditor({
   const runTestCases = async () => {
     const visibleTestCases = testCases.filter((tc) => !tc.isHidden);
     console.log("👁️ Visible test cases:", visibleTestCases.length);
-
-    console.log("SENIDU");
 
     const results: TestResult[] = [];
 
@@ -572,9 +574,11 @@ export function CodeEditor({
         <div className="flex gap-2">
           <Button variant="outline" onClick={runCode} disabled={isRunning}>
             <Play className="h-4 w-4 mr-2" />
-            {isRunning ? "Running..." : "Run Tests"}
+            {isRunning ? "Running..." : "Run Against Test Cases"}
           </Button>
-          <Button onClick={submitCode}>Submit Solution</Button>
+          <Button disabled={isRunning} onClick={submitCode}>
+            Submit Solution
+          </Button>
         </div>
       </div>
 

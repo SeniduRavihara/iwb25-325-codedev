@@ -470,8 +470,8 @@ export default function ContestChallengePage({
             <CodeEditor
               testCases={testCases}
               functionTemplates={functionTemplates}
-              challengeId={challengeId}
-              contestId={contestId}
+              // challengeId={challengeId}
+              // contestId={contestId}
               onSubmit={handleSubmit}
               initialLanguage="python"
             />
