@@ -87,6 +87,9 @@ export default function AddChallengePage() {
     executionTemplate: "",
   });
 
+  // console.log("Current template: ", currentTemplate);
+  console.log("Function templates: ", functionTemplates);
+
   const [newParameter, setNewParameter] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -300,6 +303,51 @@ public function main() returns error? {
     }
   };
 
+  const submitFunctionTemplate = async (challengeId: number, token: string) => {
+    if (!token) {
+      setSubmitError("Authentication required. Please log in again.");
+      return;
+    }
+
+    if (functionTemplates.length === 0) {
+      setSubmitError("At least one function template is required");
+      return;
+    }
+
+    try {
+      // Prepare all templates for bulk creation
+      const templates = functionTemplates.map((ft) => ({
+        language: ft.language,
+        function_name: ft.functionName,
+        parameters: JSON.stringify(ft.parameters), // Convert array to JSON string
+        return_type: ft.returnType,
+        starter_code: ft.starterCode,
+        execution_template: ft.executionTemplate,
+      }));
+
+      const bulkTemplatesData = {
+        templates: templates,
+      };
+
+      const codeTemplateResponse = await apiService.createBulkCodeTemplates(
+        challengeId,
+        bulkTemplatesData,
+        token
+      );
+
+      if (codeTemplateResponse.success) {
+        console.log(`Successfully created ${templates.length} code templates`);
+      } else {
+        setSubmitError(
+          codeTemplateResponse.message || "Failed to create code templates"
+        );
+      }
+    } catch (error) {
+      console.error("Error creating code templates:", error);
+      setSubmitError("Network error occurred");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -360,7 +408,7 @@ public function main() returns error? {
         tags: JSON.stringify(formData.tags),
         time_limit: formData.timeLimit * 60, // Convert minutes to seconds
         memory_limit: formData.memoryLimit,
-        function_templates: JSON.stringify(functionTemplates), // Add function templates
+        // function_templates: JSON.stringify(functionTemplates), // Add function templates
         // test_cases: JSON.stringify(testCases), // Add test cases
       };
 
@@ -368,6 +416,8 @@ public function main() returns error? {
       const response = await apiService.createChallenge(challengeData, token);
 
       if (response.success) {
+        await submitFunctionTemplate(response.data.data.challenge_id, token);
+
         console.log(testCases);
 
         console.log("Challenge ID: ", response.data.data.challenge_id);

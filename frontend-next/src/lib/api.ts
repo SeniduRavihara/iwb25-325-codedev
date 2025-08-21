@@ -109,8 +109,8 @@ export interface Challenge {
   author_id: number;
   submissions_count: number;
   success_rate: number;
-  function_templates?: string; // JSON string of function templates
-  test_cases?: string; // JSON string of test cases
+  // function_templates?: string; // JSON string of function templates
+  // test_cases?: string; // JSON string of test cases
   created_at: string;
   updated_at: string;
 }
@@ -162,6 +162,28 @@ export interface ContestCreate {
   prizes: string;
   rules: string;
   registration_deadline: string;
+}
+
+export interface CodeTemplateCreate {
+  language: string;
+  function_name: string;
+  parameters: string; // JSON string of parameter names
+  return_type: string;
+  starter_code: string;
+  execution_template: string;
+}
+
+export interface BulkCodeTemplateCreate {
+  templates: CodeTemplateCreate[];
+}
+
+export interface CodeTemplateUpdate {
+  language: string;
+  function_name: string;
+  parameters: string[];
+  return_type: string;
+  starter_code: string;
+  execution_template: string;
 }
 
 class ApiService {
@@ -478,7 +500,7 @@ class ApiService {
       totalTests: number;
       successRate: number;
       score: number;
-    },
+    }
   ): Promise<
     ApiResponse<{
       data: {
@@ -514,6 +536,38 @@ class ApiService {
           score: results.score,
         }),
       }),
+    });
+  }
+
+  async createCodeTemplate(
+    challengeId: number,
+    codeTemplate: CodeTemplateCreate,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/challenges/${challengeId}/templates`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(codeTemplate),
+    });
+  }
+
+  async createBulkCodeTemplates(
+    challengeId: number,
+    templates: BulkCodeTemplateCreate,
+    token: string
+  ): Promise<
+    ApiResponse<{ data: { challenge_id: number; templates_created: number } }>
+  > {
+    return this.request<{
+      data: { challenge_id: number; templates_created: number };
+    }>(`/challenges/${challengeId}/templates/bulk`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(templates),
     });
   }
 }

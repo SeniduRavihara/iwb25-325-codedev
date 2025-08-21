@@ -130,11 +130,11 @@ public function getAllUsers() returns models:User[]|error {
 
 // Get all challenges
 public function getAllChallenges() returns models:Challenge[]|error {
-    // io:println("DEBUG: Starting getAllChallenges query");
+    io:println("DEBUG: Starting getAllChallenges query");
 
     // Use raw query first, then manually map to avoid type issues
     stream<record {}, sql:Error?> challengeStream =
-        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
+        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
 
     models:Challenge[] challenges = [];
     record {|record {} value;|}|error? result = challengeStream.next();
@@ -157,7 +157,7 @@ public function getAllChallenges() returns models:Challenge[]|error {
             author_id: <int>rawChallenge["author_id"],
             submissions_count: <int>rawChallenge["submissions_count"],
             success_rate: <decimal>rawChallenge["success_rate"],  // Convert int to decimal
-            function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
+            // function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
             // test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
             created_at: <string>rawChallenge["created_at"],
             updated_at: <string>rawChallenge["updated_at"]
@@ -233,14 +233,32 @@ public function getAllContests() returns models:Contest[]|error {
 
 // Get test cases by challenge ID
 public function getTestCasesByChallengeId(int challengeId) returns models:TestCase[]|error {
-    stream<models:TestCase, sql:Error?> testCaseStream =
-        dbClient->query(`SELECT id, challenge_id, input_data, expected_output, is_hidden, points, created_at FROM test_cases WHERE challenge_id = ${challengeId} AND is_hidden = FALSE ORDER BY id`);
+    io:println("DEBUG: Getting test cases by challenge ID: " + challengeId.toString());
+
+    // Use raw query first, then manually map to avoid type issues
+    stream<record {}, sql:Error?> testCaseStream =
+        dbClient->query(`SELECT id, challenge_id, input_data, expected_output, is_hidden, points, created_at FROM test_cases WHERE challenge_id = ${challengeId} ORDER BY id`);
+
+    io:println("DEBUG: Test case stream: " + testCaseStream.toString());
 
     models:TestCase[] testCases = [];
-    record {|models:TestCase value;|}|error? result = testCaseStream.next();
+    record {|record {} value;|}|error? result = testCaseStream.next();
 
-    while result is record {|models:TestCase value;|} {
-        testCases.push(result.value);
+    while result is record {|record {} value;|} {
+        record {} rawTestCase = result.value;
+
+        // Manually map the raw data to TestCase type
+        models:TestCase testCase = {
+            id: <int>rawTestCase["id"],
+            challenge_id: <int>rawTestCase["challenge_id"],
+            input_data: <string>rawTestCase["input_data"],
+            expected_output: <string>rawTestCase["expected_output"],
+            is_hidden: <boolean>rawTestCase["is_hidden"],
+            points: <int>rawTestCase["points"],
+            created_at: <string>rawTestCase["created_at"]
+        };
+
+        testCases.push(testCase);
         result = testCaseStream.next();
     }
 
@@ -249,24 +267,26 @@ public function getTestCasesByChallengeId(int challengeId) returns models:TestCa
         return closeResult;
     }
 
+    io:println("DEBUG: Test cases: " + testCases.length().toString());
+
     return testCases;
 }
 
 // --Create new challenge--
 public function createChallenge(models:ChallengeCreate challengeData, int authorId) returns sql:ExecutionResult|error {
     // Log the incoming data for debugging
-    io:println("Creating challenge with data:");
-    io:println("Title: " + challengeData.title);
-    io:println("Description: " + challengeData.description);
-    io:println("Difficulty: " + challengeData.difficulty);
-    io:println("Tags: " + challengeData.tags);
-    io:println("Time limit: " + challengeData.time_limit.toString());
-    io:println("Memory limit: " + challengeData.memory_limit.toString());
+    // io:println("Creating challenge with data:");
+    // io:println("Title: " + challengeData.title);
+    // io:println("Description: " + challengeData.description);
+    // io:println("Difficulty: " + challengeData.difficulty);
+    // io:println("Tags: " + challengeData.tags);
+    // io:println("Time limit: " + challengeData.time_limit.toString());
+    // io:println("Memory limit: " + challengeData.memory_limit.toString());
 
     // Log if additional data is provided
-    if challengeData.function_templates is string {
-        io:println("Function templates provided");
-    }
+    // if challengeData.function_templates is string {
+    //     io:println("Function templates provided");
+    // }
 
     // if challengeData.test_cases is string {
     //     io:println("Test cases provided");
@@ -274,19 +294,19 @@ public function createChallenge(models:ChallengeCreate challengeData, int author
 
     // Create the challenge in database with function_templates and test_cases
     return dbClient->execute(`
-        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, created_at, updated_at) 
-        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, ${challengeData.function_templates}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at) 
+        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 }
 
 public function createTestCases(models:RecevingTestCases testcasesData, int challengeId) returns sql:ExecutionResult|error {
     // Log the incoming data for debugging
-    io:println("Creating test case with data:");
-    io:println("Challenge ID: " + challengeId.toString());
-    io:println("Input data: " + testcasesData.input_data);
-    io:println("Expected output: " + testcasesData.expected_output);
-    io:println("Is hidden: " + testcasesData.is_hidden.toString());
-    io:println("Points: " + testcasesData.points.toString());
+    // io:println("Creating test case with data:");
+    // io:println("Challenge ID: " + challengeId.toString());
+    // io:println("Input data: " + testcasesData.input_data);
+    // io:println("Expected output: " + testcasesData.expected_output);
+    // io:println("Is hidden: " + testcasesData.is_hidden.toString());
+    // io:println("Points: " + testcasesData.points.toString());
 
     // Create the test case in database
     return dbClient->execute(`
@@ -308,6 +328,101 @@ public function createContest(models:ContestCreate contestData, int createdBy) r
         VALUES (${contestData.title}, ${contestData.description}, ${contestData.start_time}, ${contestData.end_time}, ${contestData.duration}, 'upcoming', ${contestData.max_participants}, ${contestData.prizes}, ${contestData.rules}, ${createdBy}, ${contestData.registration_deadline}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 }
+
+// --------------------------Code Template functions-----------------
+public function createCodeTemplate(models:CodeTemplateCreate templateData, int challengeId) returns sql:ExecutionResult|error {
+    // Log the incoming data for debugging
+    io:println("Creating code template with data:");
+    io:println("Challenge ID: " + challengeId.toString());
+    io:println("Language: " + templateData.language);
+    io:println("Function name: " + templateData.function_name);
+    io:println("Parameters: " + templateData.parameters);
+    io:println("Return type: " + templateData.return_type);
+
+    return dbClient->execute(`
+        INSERT INTO code_templates (challenge_id, language, function_name, parameters, return_type, starter_code, execution_template, created_at, updated_at) 
+        VALUES (${challengeId}, ${templateData.language}, ${templateData.function_name}, ${templateData.parameters}, ${templateData.return_type}, ${templateData.starter_code}, ${templateData.execution_template}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+}
+
+public function getCodeTemplatesByChallengeId(int challengeId) returns models:CodeTemplate[]|error {
+    io:println("DEBUG: Getting code templates by challenge ID: " + challengeId.toString());
+
+    // Use raw query first, then manually map to avoid type issues
+    stream<record {}, sql:Error?> templateStream =
+        dbClient->query(`SELECT id, challenge_id, language, function_name, parameters, return_type, starter_code, execution_template, created_at, updated_at FROM code_templates WHERE challenge_id = ${challengeId} ORDER BY language, id`);
+
+    models:CodeTemplate[] templates = [];
+    record {|record {} value;|}|error? result = templateStream.next();
+
+    while result is record {|record {} value;|} {
+        record {} rawTemplate = result.value;
+
+        // Manually map the raw data to CodeTemplate type
+        models:CodeTemplate template = {
+            id: <int>rawTemplate["id"],
+            challenge_id: <int>rawTemplate["challenge_id"],
+            language: <string>rawTemplate["language"],
+            function_name: <string>rawTemplate["function_name"],
+            parameters: <string>rawTemplate["parameters"],
+            return_type: <string>rawTemplate["return_type"],
+            starter_code: <string>rawTemplate["starter_code"],
+            execution_template: <string>rawTemplate["execution_template"],
+            created_at: <string>rawTemplate["created_at"],
+            updated_at: <string>rawTemplate["updated_at"]
+        };
+
+        templates.push(template);
+        result = templateStream.next();
+    }
+
+    error? closeResult = templateStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    io:println("DEBUG: Code templates found: " + templates.length().toString());
+    return templates;
+}
+
+public function updateCodeTemplate(int templateId, models:CodeTemplateUpdate templateData) returns sql:ExecutionResult|error {
+    // For now, return a simple update that only changes updated_at
+    // This can be enhanced later with proper field updates
+    return dbClient->execute(`UPDATE code_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = ${templateId}`);
+}
+
+public function deleteCodeTemplate(int templateId) returns sql:ExecutionResult|error {
+    return dbClient->execute(`DELETE FROM code_templates WHERE id = ${templateId}`);
+}
+
+public function deleteCodeTemplatesByChallengeId(int challengeId) returns sql:ExecutionResult|error {
+    return dbClient->execute(`DELETE FROM code_templates WHERE challenge_id = ${challengeId}`);
+}
+
+// Create multiple code templates in a single transaction
+public function createBulkCodeTemplates(models:BulkCodeTemplateCreate templatesData, int challengeId) returns error? {
+    io:println("Creating " + templatesData.templates.length().toString() + " code templates for challenge " + challengeId.toString());
+
+    foreach models:CodeTemplateCreate template in templatesData.templates {
+        // Log the template being created
+        io:println("Creating template for language: " + template.language + ", function: " + template.function_name);
+
+        // Create the template
+        sql:ExecutionResult|error result = dbClient->execute(`
+            INSERT INTO code_templates (challenge_id, language, function_name, parameters, return_type, starter_code, execution_template, created_at, updated_at) 
+            VALUES (${challengeId}, ${template.language}, ${template.function_name}, ${template.parameters}, ${template.return_type}, ${template.starter_code}, ${template.execution_template}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+
+        if result is error {
+            return error("Failed to create code template: " + result.message());
+        }
+    }
+
+    io:println("✓ Successfully created " + templatesData.templates.length().toString() + " code templates");
+    return;
+}
+
+// ------------------------------------------------------------------
 
 // Add challenge to contest
 public function addChallengeToContest(int contestId, int challengeId, int points, int orderIndex) returns error? {
@@ -840,7 +955,7 @@ public function getChallengesByContestId(int contestId) returns models:Challenge
             author_id: <int>rawChallenge["author_id"],
             submissions_count: <int>rawChallenge["submissions_count"],
             success_rate: <decimal>rawChallenge["success_rate"],
-            function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
+            // function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
             // test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
             created_at: <string>rawChallenge["created_at"],
             updated_at: <string>rawChallenge["updated_at"]

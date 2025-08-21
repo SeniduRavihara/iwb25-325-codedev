@@ -52,6 +52,7 @@ export default function AdminChallengesPage() {
       try {
         const response = await apiService.getAdminChallenges(token);
         if (response.success && response.data && response.data.data) {
+          console.log("Challenge Response: ", response.data.data);
           setChallenges(response.data.data);
         } else {
           setError(response.message || "Failed to fetch challenges");

@@ -62,7 +62,7 @@ public type Challenge record {|
     int author_id;
     int submissions_count;
     decimal success_rate; // Make sure this matches - could be int if database stores as int
-    string? function_templates; // JSON string of function templates
+    // string? function_templates; // JSON string of function templates
     // string? test_cases; // JSON string of test cases
     string created_at; // Date as string
     string updated_at; // Date as string
@@ -75,8 +75,54 @@ public type ChallengeCreate record {|
     string tags;
     int time_limit;
     int memory_limit;
-    string? function_templates; // JSON string of function templates
+    // string? function_templates; // JSON string of function templates
     // string? test_cases; // JSON string of test cases
+|};
+
+public type ChallengeUpdate record {|
+    string title?;
+    string description?;
+    string difficulty?;
+    string tags?;
+    int time_limit?;
+    int memory_limit?;
+|};
+
+// Code Template models
+public type CodeTemplate record {|
+    int id;
+    int challenge_id;
+    string language;
+    string function_name;
+    string parameters; // JSON array of parameter names
+    string return_type;
+    string starter_code;
+    string execution_template;
+    string created_at;
+    string updated_at;
+|};
+
+public type CodeTemplateCreate record {|
+    string language;
+    string function_name;
+    string parameters; // JSON array of parameter names
+    string return_type;
+    string starter_code;
+    string execution_template;
+|};
+
+public type CodeTemplateUpdate record {|
+    string language?;
+    string function_name?;
+    string parameters?;
+    string return_type?;
+    string starter_code?;
+    string execution_template?;
+|};
+
+// Bulk code template creation
+public type BulkCodeTemplateCreate record {|
+    CodeTemplateCreate[] templates;
 |};
 
 public type LinkChallengesToContest record {|
@@ -97,6 +143,7 @@ public type LinkTestcasesToChallenge record {|
 // Test Case models
 public type TestCase record {|
     int id;
+    int challenge_id;
     string input_data;
     string expected_output;
     boolean is_hidden;

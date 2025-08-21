@@ -666,6 +666,217 @@ service / on new http:Listener(serverPort) {
         check caller->respond(response);
     }
 
+    // Code Template endpoints
+    // Get code templates for a specific challenge (public)
+    resource function get challenges/[int challengeId]/templates(http:Caller caller, http:Request req) returns error? {
+        models:CodeTemplate[]|error templates = database:getCodeTemplatesByChallengeId(challengeId);
+
+        if templates is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch code templates: " + templates.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": templates
+        });
+        check caller->respond(response);
+    }
+
+    // Create code template for a specific challenge (admin only)
+    resource function post challenges/[int challengeId]/templates(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Extract template data
+        models:CodeTemplateCreate|error templateData = payload.cloneWithType(models:CodeTemplateCreate);
+
+        if templateData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid template data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Create template in database
+        sql:ExecutionResult|error result = database:createCodeTemplate(templateData, challengeId);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to create code template: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Code template created successfully",
+            "data": {
+                "template_id": result.lastInsertId,
+                "challenge_id": challengeId
+            }
+        });
+        check caller->respond(response);
+    }
+
+    // Create multiple code templates for a specific challenge (admin only)
+    resource function post challenges/[int challengeId]/templates/bulk(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        io:println("DEBUG: Payload: ", payload.toJson());
+
+        // Extract template data
+        models:BulkCodeTemplateCreate|error templatesData = payload.cloneWithType(models:BulkCodeTemplateCreate);
+
+        if templatesData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid templates data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Create templates in database
+        error? result = database:createBulkCodeTemplates(templatesData, challengeId);
+        if result is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to create code templates: " + result.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Code templates created successfully",
+            "data": {
+                "challenge_id": challengeId,
+                "templates_created": templatesData.templates.length()
+            }
+        });
+        check caller->respond(response);
+    }
+
     // Get challenges for a specific contest (public)
     resource function get contests/[int contestId]/challenges(http:Caller caller, http:Request req) returns error? {
         models:Challenge[]|error challenges = database:getChallengesByContestId(contestId);

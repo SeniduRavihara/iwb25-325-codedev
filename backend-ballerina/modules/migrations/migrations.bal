@@ -235,8 +235,8 @@ public MigrationInfo[] MIGRATIONS = [
     },
     {
         version: 8,
-        name: "008_add_function_templates_to_challenges",
-        execute: addFunctionTemplatesToChallenges
+        name: "008_create_code_templates_table",
+        execute: createCodeTemplatesTable
     }
 ];
 
