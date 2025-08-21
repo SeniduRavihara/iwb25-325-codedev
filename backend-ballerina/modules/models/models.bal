@@ -63,7 +63,7 @@ public type Challenge record {|
     int submissions_count;
     decimal success_rate; // Make sure this matches - could be int if database stores as int
     string? function_templates; // JSON string of function templates
-    string? test_cases; // JSON string of test cases
+    // string? test_cases; // JSON string of test cases
     string created_at; // Date as string
     string updated_at; // Date as string
 |};
@@ -76,26 +76,27 @@ public type ChallengeCreate record {|
     int time_limit;
     int memory_limit;
     string? function_templates; // JSON string of function templates
-    string? test_cases; // JSON string of test cases
+    // string? test_cases; // JSON string of test cases
 |};
 
 public type LinkChallengesToContest record {|
     int[] challengeIds;
 |};
 
-public type ChallengeUpdate record {|
-    string title?;
-    string description?;
-    string difficulty?;
-    string tags?;
-    int time_limit?;
-    int memory_limit?;
+public type RecevingTestCases record {|
+    string input_data;
+    string expected_output;
+    boolean is_hidden;
+    int points;
+|};
+
+public type LinkTestcasesToChallenge record {|
+    RecevingTestCases[] testcases;
 |};
 
 // Test Case models
 public type TestCase record {|
     int id;
-    int challenge_id;
     string input_data;
     string expected_output;
     boolean is_hidden;

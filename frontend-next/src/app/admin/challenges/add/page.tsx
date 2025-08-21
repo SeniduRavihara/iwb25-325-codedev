@@ -361,14 +361,36 @@ public function main() returns error? {
         time_limit: formData.timeLimit * 60, // Convert minutes to seconds
         memory_limit: formData.memoryLimit,
         function_templates: JSON.stringify(functionTemplates), // Add function templates
-        test_cases: JSON.stringify(testCases), // Add test cases
+        // test_cases: JSON.stringify(testCases), // Add test cases
       };
 
       // Create challenge via API
       const response = await apiService.createChallenge(challengeData, token);
 
       if (response.success) {
-        router.push("/admin/challenges?success=true");
+        console.log(testCases);
+
+        console.log("Challenge ID: ", response.data.data.challenge_id);
+
+        // Link test cases to the challenge
+        const linkResponse = await apiService.linkTestcasesToChallenge(
+          response.data.data.challenge_id,
+          testCases.map((tc) => ({
+            input_data: tc.input,
+            expected_output: tc.expectedOutput,
+            is_hidden: tc.isHidden,
+            points: tc.points,
+          })),
+          token
+        );
+        if (linkResponse.success) {
+          console.log("Test cases linked to challenge");
+          // router.push("/admin/challenges?success=true");
+        } else {
+          setSubmitError(
+            linkResponse.message || "Failed to link challenges to contest"
+          );
+        }
       } else {
         setSubmitError(response.message || "Failed to create challenge");
       }

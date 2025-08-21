@@ -574,6 +574,98 @@ service / on new http:Listener(serverPort) {
         check caller->respond(response);
     }
 
+    // store test cases for a specific challenge (admin only)----------------------------------
+    resource function post challenges/[int challengeId]/testcases(http:Caller caller, http:Request req) returns error? {
+        // Check if user is admin
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        if !userResult.is_admin {
+            http:Response response = new;
+            response.statusCode = 403;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Admin access required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Parse request body
+        json|http:ClientError payload = req.getJsonPayload();
+        if payload is http:ClientError {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid JSON payload"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Extract challenge data
+        models:LinkTestcasesToChallenge|error testcasesData = payload.cloneWithType(models:LinkTestcasesToChallenge);
+
+        if testcasesData is error {
+            http:Response response = new;
+            response.statusCode = 400;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid test cases data format"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        foreach models:RecevingTestCases testcase in testcasesData.testcases {
+
+            io:println("DEBUG: Testcase: ", testcase.toJson());
+
+            sql:ExecutionResult|error result = database:createTestCases(testcase, challengeId);
+            if result is error {
+                http:Response response = new;
+                response.statusCode = 500;
+                response.setJsonPayload({
+                    "success": false,
+                    "message": "Failed to add test case to challenge " + challengeId.toString() + ": " + result.message()
+                });
+                check caller->respond(response);
+                return;
+            }
+        }
+
+        http:Response response = new;
+        response.statusCode = 201;
+        response.setJsonPayload({
+            "success": true,
+            "message": "Test cases added to challenge successfully"
+        });
+        check caller->respond(response);
+    }
+
     // Get challenges for a specific contest (public)
     resource function get contests/[int contestId]/challenges(http:Caller caller, http:Request req) returns error? {
         models:Challenge[]|error challenges = database:getChallengesByContestId(contestId);
@@ -951,7 +1043,8 @@ service / on new http:Listener(serverPort) {
             "data": {
                 "title": challengeData.title,
                 "difficulty": challengeData.difficulty,
-                "author_id": userResult.id
+                "author_id": userResult.id,
+                "challenge_id": result.lastInsertId
             }
         });
         check caller->respond(response);

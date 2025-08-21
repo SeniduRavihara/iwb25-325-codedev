@@ -134,13 +134,10 @@ export interface Contest {
 }
 
 export interface TestCase {
-  id: number;
-  challenge_id: number;
   input_data: string;
   expected_output: string;
   is_hidden: boolean;
   points: number;
-  created_at: string;
 }
 
 // Create interfaces
@@ -152,7 +149,7 @@ export interface ChallengeCreate {
   time_limit: number;
   memory_limit: number;
   function_templates?: string; // JSON string of function templates
-  test_cases?: string; // JSON string of test cases
+  // test_cases?: string; // JSON string of test cases
 }
 
 export interface ContestCreate {
@@ -332,6 +329,20 @@ class ApiService {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(challengeData),
+    });
+  }
+
+  async linkTestcasesToChallenge(
+    challengeId: number,
+    testcases: TestCase[],
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/challenges/${challengeId}/testcases`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ testcases }),
     });
   }
 

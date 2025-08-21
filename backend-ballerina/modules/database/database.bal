@@ -134,7 +134,7 @@ public function getAllChallenges() returns models:Challenge[]|error {
 
     // Use raw query first, then manually map to avoid type issues
     stream<record {}, sql:Error?> challengeStream =
-        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, test_cases, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
+        dbClient->query(`SELECT id, title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, created_at, updated_at FROM challenges ORDER BY created_at DESC`);
 
     models:Challenge[] challenges = [];
     record {|record {} value;|}|error? result = challengeStream.next();
@@ -158,7 +158,7 @@ public function getAllChallenges() returns models:Challenge[]|error {
             submissions_count: <int>rawChallenge["submissions_count"],
             success_rate: <decimal>rawChallenge["success_rate"],  // Convert int to decimal
             function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
-            test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
+            // test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
             created_at: <string>rawChallenge["created_at"],
             updated_at: <string>rawChallenge["updated_at"]
         };
@@ -268,14 +268,30 @@ public function createChallenge(models:ChallengeCreate challengeData, int author
         io:println("Function templates provided");
     }
 
-    if challengeData.test_cases is string {
-        io:println("Test cases provided");
-    }
+    // if challengeData.test_cases is string {
+    //     io:println("Test cases provided");
+    // }
 
     // Create the challenge in database with function_templates and test_cases
     return dbClient->execute(`
-        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, test_cases, created_at, updated_at) 
-        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, ${challengeData.function_templates}, ${challengeData.test_cases}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, function_templates, created_at, updated_at) 
+        VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, ${challengeData.function_templates}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+}
+
+public function createTestCases(models:RecevingTestCases testcasesData, int challengeId) returns sql:ExecutionResult|error {
+    // Log the incoming data for debugging
+    io:println("Creating test case with data:");
+    io:println("Challenge ID: " + challengeId.toString());
+    io:println("Input data: " + testcasesData.input_data);
+    io:println("Expected output: " + testcasesData.expected_output);
+    io:println("Is hidden: " + testcasesData.is_hidden.toString());
+    io:println("Points: " + testcasesData.points.toString());
+
+    // Create the test case in database
+    return dbClient->execute(`
+        INSERT INTO test_cases (challenge_id, input_data, expected_output, is_hidden, points, created_at) 
+        VALUES (${challengeId}, ${testcasesData.input_data}, ${testcasesData.expected_output}, ${testcasesData.is_hidden}, ${testcasesData.points}, CURRENT_TIMESTAMP)
     `);
 }
 
@@ -825,7 +841,7 @@ public function getChallengesByContestId(int contestId) returns models:Challenge
             submissions_count: <int>rawChallenge["submissions_count"],
             success_rate: <decimal>rawChallenge["success_rate"],
             function_templates: rawChallenge["function_templates"] == () ? () : <string>rawChallenge["function_templates"],
-            test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
+            // test_cases: rawChallenge["test_cases"] == () ? () : <string>rawChallenge["test_cases"],
             created_at: <string>rawChallenge["created_at"],
             updated_at: <string>rawChallenge["updated_at"]
         };
