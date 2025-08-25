@@ -31,7 +31,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function AdminContestsPage() {
   const { token } = useAuth();
@@ -39,6 +39,11 @@ export default function AdminContestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingContest, setDeletingContest] = useState<number | null>(null);
+
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [durationFilter, setDurationFilter] = useState("all");
 
   useEffect(() => {
     const fetchContests = async () => {
@@ -81,6 +86,43 @@ export default function AdminContestsPage() {
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString();
   };
+
+  // Filter and sort contests
+  const filteredContests = useMemo(() => {
+    return contests.filter((contest) => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch =
+          contest.title.toLowerCase().includes(searchLower) ||
+          contest.description.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== "all") {
+        if (contest.status !== statusFilter) return false;
+      }
+
+      // Duration filter
+      if (durationFilter !== "all") {
+        const durationHours = contest.duration / 60;
+        switch (durationFilter) {
+          case "short":
+            if (durationHours > 2) return false;
+            break;
+          case "medium":
+            if (durationHours <= 2 || durationHours > 4) return false;
+            break;
+          case "long":
+            if (durationHours <= 4) return false;
+            break;
+        }
+      }
+
+      return true;
+    });
+  }, [contests, searchTerm, statusFilter, durationFilter]);
 
   const handleDeleteContest = async (contestId: number) => {
     if (!token) {
@@ -161,10 +203,15 @@ export default function AdminContestsPage() {
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search contests..." className="pl-10" />
+          <Input
+            placeholder="Search contests..."
+            className="pl-10 border-2 border-border focus:border-primary"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Select>
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -174,155 +221,174 @@ export default function AdminContestsPage() {
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Select>
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select value={durationFilter} onValueChange={setDurationFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
             <SelectValue placeholder="Duration" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Durations</SelectItem>
-            <SelectItem value="short">Short (&lt;=2h)</SelectItem>
+            <SelectItem value="short">Short (≤2h)</SelectItem>
             <SelectItem value="medium">Medium (2-4h)</SelectItem>
             <SelectItem value="long">Long (&gt;4h)</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground mb-4">
+        {filteredContests.length} of {contests.length} contests
+      </div>
+
       {/* Contests Grid */}
       <div className="grid gap-6">
-        {contests.map((contest) => (
-          <Card key={contest.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <CardTitle className="text-xl">
-                      <Link
-                        href={`/admin/contests/${contest.id}`}
-                        className="hover:text-primary transition-colors"
-                      >
-                        {contest.title}
+        {filteredContests.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-muted-foreground mb-4">
+              <p className="text-lg font-medium mb-2">No contests found</p>
+              <p className="text-sm">
+                Try adjusting your search or filter criteria
+              </p>
+            </div>
+          </div>
+        ) : (
+          filteredContests.map((contest) => (
+            <Card
+              key={contest.id}
+              className="hover:shadow-lg transition-shadow"
+            >
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <CardTitle className="text-xl">
+                        <Link
+                          href={`/admin/contests/${contest.id}`}
+                          className="hover:text-primary transition-colors"
+                        >
+                          {contest.title}
+                        </Link>
+                      </CardTitle>
+                      <Badge variant={getStatusColor(contest.status)}>
+                        {contest.status.charAt(0).toUpperCase() +
+                          contest.status.slice(1)}
+                      </Badge>
+                    </div>
+                    <CardDescription className="mb-3">
+                      {contest.description}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/contests/${contest.id}`}>
+                        <Eye className="h-4 w-4" />
                       </Link>
-                    </CardTitle>
-                    <Badge variant={getStatusColor(contest.status)}>
-                      {contest.status.charAt(0).toUpperCase() +
-                        contest.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <CardDescription className="mb-3">
-                    {contest.description}
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/contests/${contest.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/admin/contests/${contest.id}/edit`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDeleteContest(contest.id)}
-                    disabled={deletingContest === contest.id}
-                  >
-                    {deletingContest === contest.id ? (
-                      <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Start Time</div>
-                    <div>{formatDateTime(contest.start_time)}</div>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/contests/${contest.id}/edit`}>
+                        <Edit className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDeleteContest(contest.id)}
+                      disabled={deletingContest === contest.id}
+                    >
+                      {deletingContest === contest.id ? (
+                        <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Duration</div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
                     <div>
-                      {Math.floor(contest.duration / 60)}h{" "}
-                      {contest.duration % 60}m
+                      <div className="font-medium">Start Time</div>
+                      <div>{formatDateTime(contest.start_time)}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Duration</div>
+                      <div>
+                        {Math.floor(contest.duration / 60)}h{" "}
+                        {contest.duration % 60}m
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Participants</div>
+                      <div>
+                        {contest.participants_count}
+                        {contest.max_participants
+                          ? `/${contest.max_participants}`
+                          : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Trophy className="h-4 w-4" />
+                    <div>
+                      <div className="font-medium">Problems</div>
+                      <div>
+                        {/* TODO: Get challenge count from contest_challenges table */}
+                        <span className="text-muted-foreground">N/A</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Participants</div>
-                    <div>
-                      {contest.participants_count}
-                      {contest.max_participants
-                        ? `/${contest.max_participants}`
-                        : ""}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Trophy className="h-4 w-4" />
-                  <div>
-                    <div className="font-medium">Problems</div>
-                    <div>
-                      {/* TODO: Get challenge count from contest_challenges table */}
-                      <span className="text-muted-foreground">N/A</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {contest.prizes && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="text-sm font-medium text-muted-foreground mb-2">
-                    Prizes:
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(() => {
-                      try {
-                        if (!contest.prizes) {
+                {contest.prizes && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Prizes:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        try {
+                          if (!contest.prizes) {
+                            return (
+                              <span className="text-muted-foreground text-xs">
+                                No prizes
+                              </span>
+                            );
+                          }
+                          const prizesArray = JSON.parse(contest.prizes);
+                          return prizesArray.map(
+                            (prize: string, index: number) => (
+                              <Badge
+                                key={index}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {prize}
+                              </Badge>
+                            )
+                          );
+                        } catch (error) {
                           return (
                             <span className="text-muted-foreground text-xs">
                               No prizes
                             </span>
                           );
                         }
-                        const prizesArray = JSON.parse(contest.prizes);
-                        return prizesArray.map(
-                          (prize: string, index: number) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {prize}
-                            </Badge>
-                          )
-                        );
-                      } catch (error) {
-                        return (
-                          <span className="text-muted-foreground text-xs">
-                            No prizes
-                          </span>
-                        );
-                      }
-                    })()}
+                      })()}
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                )}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

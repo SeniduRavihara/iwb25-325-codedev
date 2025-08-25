@@ -8,6 +8,10 @@ export interface ApiResponse<T = any> {
   code?: number;
 }
 
+// ============================================================================
+// AUTHENTICATION & USER INTERFACES
+// ============================================================================
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -37,7 +41,10 @@ export interface AuthResponse {
   message: string;
 }
 
-// Code execution interfaces
+// ============================================================================
+// CODE EXECUTION INTERFACES
+// ============================================================================
+
 export interface CodeExecutionRequest {
   code: string;
   language: string;
@@ -97,7 +104,10 @@ export interface HealthResponse {
   };
 }
 
-// Challenge interfaces
+// ============================================================================
+// CHALLENGE INTERFACES
+// ============================================================================
+
 export interface Challenge {
   id: number;
   title: string;
@@ -109,28 +119,18 @@ export interface Challenge {
   author_id: number;
   submissions_count: number;
   success_rate: number;
-  // function_templates?: string; // JSON string of function templates
-  // test_cases?: string; // JSON string of test cases
   created_at: string;
   updated_at: string;
 }
 
-export interface Contest {
-  id: number;
+export interface ChallengeCreate {
   title: string;
   description: string;
-  start_time: string;
-  end_time: string;
-  duration: number;
-  status: string;
-  max_participants: number;
-  prizes: string; // JSON string from backend
-  rules: string;
-  created_by: number;
-  registration_deadline: string;
-  participants_count: number;
-  created_at: string;
-  updated_at: string;
+  difficulty: string;
+  tags: string;
+  time_limit: number;
+  memory_limit: number;
+  function_templates?: string;
 }
 
 export interface TestCase {
@@ -140,34 +140,10 @@ export interface TestCase {
   points: number;
 }
 
-// Create interfaces
-export interface ChallengeCreate {
-  title: string;
-  description: string;
-  difficulty: string;
-  tags: string;
-  time_limit: number;
-  memory_limit: number;
-  function_templates?: string; // JSON string of function templates
-  // test_cases?: string; // JSON string of test cases
-}
-
-export interface ContestCreate {
-  title: string;
-  description: string;
-  start_time: string;
-  end_time: string;
-  duration: number;
-  max_participants?: number;
-  prizes: string;
-  rules: string;
-  registration_deadline: string;
-}
-
 export interface CodeTemplateCreate {
   language: string;
   function_name: string;
-  parameters: string; // JSON string of parameter names
+  parameters: string;
   return_type: string;
   starter_code: string;
   execution_template: string;
@@ -186,6 +162,44 @@ export interface CodeTemplateUpdate {
   execution_template: string;
 }
 
+// ============================================================================
+// CONTEST INTERFACES
+// ============================================================================
+
+export interface Contest {
+  id: number;
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  status: string;
+  max_participants: number;
+  prizes: string;
+  rules: string;
+  created_by: number;
+  registration_deadline: string;
+  participants_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContestCreate {
+  title: string;
+  description: string;
+  start_time: string;
+  end_time: string;
+  duration: number;
+  max_participants?: number;
+  prizes: string;
+  rules: string;
+  registration_deadline: string;
+}
+
+// ============================================================================
+// SUBMISSION INTERFACES
+// ============================================================================
+
 export interface Submission {
   id: number;
   user_id: number;
@@ -193,11 +207,11 @@ export interface Submission {
   contest_id?: number;
   code: string;
   language: string;
-  status: string; // "pending", "running", "completed", "failed"
-  result: string; // "accepted", "wrong_answer", "time_limit_exceeded", "memory_limit_exceeded", "runtime_error", "compilation_error"
+  status: string;
+  result: string;
   score: number;
-  execution_time?: number; // in milliseconds
-  memory_used?: number; // in KB
+  execution_time?: number;
+  memory_used?: number;
   error_message?: string;
   test_cases_passed: number;
   total_test_cases: number;
@@ -220,12 +234,20 @@ export interface SubmissionResult {
   totalTestCases: number;
 }
 
+// ============================================================================
+// API SERVICE CLASS
+// ============================================================================
+
 class ApiService {
   private baseUrl: string;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
   }
+
+  // ============================================================================
+  // PRIVATE HELPER METHODS
+  // ============================================================================
 
   private async request<T>(
     endpoint: string,
@@ -265,6 +287,10 @@ class ApiService {
     }
   }
 
+  // ============================================================================
+  // AUTHENTICATION & USER ENDPOINTS
+  // ============================================================================
+
   async login(credentials: LoginRequest): Promise<ApiResponse<AuthResponse>> {
     return this.request<AuthResponse>("/login", {
       method: "POST",
@@ -289,18 +315,12 @@ class ApiService {
     });
   }
 
+  // ============================================================================
+  // HEALTH & SYSTEM ENDPOINTS
+  // ============================================================================
+
   async healthCheck(): Promise<ApiResponse<string>> {
     return this.request<string>("/health");
-  }
-
-  // Code execution methods
-  async executeCode(
-    request: CodeExecutionRequest
-  ): Promise<ApiResponse<CodeExecutionResponse>> {
-    return this.request<CodeExecutionResponse>("/api/submit", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
   }
 
   async getCodeExecutionHealth(): Promise<ApiResponse<HealthResponse>> {
@@ -311,40 +331,26 @@ class ApiService {
     return this.request<LanguagesResponse>("/api/languages");
   }
 
-  // Challenge methods
+  // ============================================================================
+  // CODE EXECUTION ENDPOINTS
+  // ============================================================================
+
+  async executeCode(
+    request: CodeExecutionRequest
+  ): Promise<ApiResponse<CodeExecutionResponse>> {
+    return this.request<CodeExecutionResponse>("/api/submit", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  // ============================================================================
+  // CHALLENGE ENDPOINTS
+  // ============================================================================
+
+  // GET Methods
   async getChallenges(): Promise<ApiResponse<{ data: Challenge[] }>> {
     return this.request<{ data: Challenge[] }>("/challenges");
-  }
-
-  async getChallengesForContest(
-    contestId: number
-  ): Promise<ApiResponse<{ data: Challenge[] }>> {
-    return this.request<{ data: Challenge[] }>(
-      `/contests/${contestId}/challenges`
-    );
-  }
-
-  async addChallengeToContest(
-    contestId: number,
-    challengeId: number,
-    points: number,
-    orderIndex: number,
-    token: string
-  ): Promise<ApiResponse<{ message: string }>> {
-    return this.request<{ message: string }>(
-      `/contests/${contestId}/challenges`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          challengeId,
-          points,
-          orderIndex,
-        }),
-      }
-    );
   }
 
   async getAdminChallenges(
@@ -357,24 +363,40 @@ class ApiService {
     });
   }
 
-  // Contest methods
-  async getContests(): Promise<ApiResponse<{ data: Contest[] }>> {
-    return this.request<{ data: Contest[] }>("/contests");
+  async getTestCases(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: TestCase[] }>> {
+    return this.request<{ data: TestCase[] }>(
+      `/challenges/${challengeId}/testcases`,
+      {
+        method: "GET",
+      }
+    );
   }
 
-  async getAdminContests(
-    token: string
-  ): Promise<ApiResponse<{ data: Contest[] }>> {
-    return this.request<{ data: Contest[] }>("/admin_contests", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  async getCodeTemplates(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: CodeTemplateCreate[] }>> {
+    return this.request<{ data: CodeTemplateCreate[] }>(
+      `/challenges/${challengeId}/templates`,
+      {
+        method: "GET",
+      }
+    );
   }
 
-  // Test case methods - removed duplicate, using the newer version below
+  async getSubmissionsForChallenge(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: Submission[] }>> {
+    return this.request<{ data: Submission[] }>(
+      `/challenges/${challengeId}/submissions`,
+      {
+        method: "GET",
+      }
+    );
+  }
 
-  // Create methods
+  // POST Methods
   async createChallenge(
     challengeData: ChallengeCreate,
     token: string
@@ -402,34 +424,54 @@ class ApiService {
     });
   }
 
-  async createContest(
-    contestData: ContestCreate,
+  async createCodeTemplate(
+    challengeId: number,
+    codeTemplate: CodeTemplateCreate,
     token: string
   ): Promise<ApiResponse<any>> {
-    return this.request<any>("/contests", {
+    return this.request<any>(`/challenges/${challengeId}/templates`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(contestData),
+      body: JSON.stringify(codeTemplate),
     });
   }
 
-  async linkChallengesToContest(
-    contestId: number,
-    challengeIds: number[],
+  async createBulkCodeTemplates(
+    challengeId: number,
+    templates: BulkCodeTemplateCreate,
     token: string
-  ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/contests/${contestId}/link_challenges`, {
+  ): Promise<
+    ApiResponse<{ data: { challenge_id: number; templates_created: number } }>
+  > {
+    return this.request<{
+      data: { challenge_id: number; templates_created: number };
+    }>(`/challenges/${challengeId}/templates/bulk`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ challengeIds }),
+      body: JSON.stringify(templates),
     });
   }
 
-  // Delete methods
+  // PUT Methods
+  async updateChallenge(
+    challengeId: number,
+    challengeData: ChallengeCreate,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/challenges/${challengeId}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(challengeData),
+    });
+  }
+
+  // DELETE Methods
   async deleteChallenge(
     challengeId: number,
     token: string
@@ -442,41 +484,42 @@ class ApiService {
     });
   }
 
-  async deleteContest(
-    contestId: number,
+  // ============================================================================
+  // CONTEST ENDPOINTS
+  // ============================================================================
+
+  // GET Methods
+  async getContests(): Promise<ApiResponse<{ data: Contest[] }>> {
+    return this.request<{ data: Contest[] }>("/contests");
+  }
+
+  async getAdminContests(
     token: string
-  ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/contests/${contestId}`, {
-      method: "DELETE",
+  ): Promise<ApiResponse<{ data: Contest[] }>> {
+    return this.request<{ data: Contest[] }>("/admin_contests", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
   }
 
-  // Contest registration methods
-  async registerForContest(
-    contestId: number,
-    token: string
-  ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/contests/${contestId}/register`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  async getChallengesForContest(
+    contestId: number
+  ): Promise<ApiResponse<{ data: Challenge[] }>> {
+    return this.request<{ data: Challenge[] }>(
+      `/contests/${contestId}/challenges`
+    );
   }
 
-  async unregisterFromContest(
-    contestId: number,
-    token: string
-  ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/contests/${contestId}/register`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  async getContestStatus(
+    contestId: number
+  ): Promise<ApiResponse<{ data: { contestId: number; status: string } }>> {
+    return this.request<{ data: { contestId: number; status: string } }>(
+      `/contests/${contestId}/status`,
+      {
+        method: "GET",
+      }
+    );
   }
 
   async checkContestRegistration(
@@ -494,32 +537,73 @@ class ApiService {
     );
   }
 
+  // POST Methods
+  async createContest(
+    contestData: ContestCreate,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>("/contests", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(contestData),
+    });
+  }
+
+  async addChallengeToContest(
+    contestId: number,
+    challengeId: number,
+    points: number,
+    orderIndex: number,
+    token: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>(
+      `/contests/${contestId}/challenges`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          challengeId,
+          points,
+          orderIndex,
+        }),
+      }
+    );
+  }
+
+  async linkChallengesToContest(
+    contestId: number,
+    challengeIds: number[],
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/link_challenges`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ challengeIds }),
+    });
+  }
+
+  async registerForContest(
+    contestId: number,
+    token: string
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/register`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
   async updateContestStatus(contestId: number): Promise<ApiResponse<any>> {
     return this.request<any>(`/contests/${contestId}/update_status`, {
       method: "POST",
     });
-  }
-
-  async getContestStatus(
-    contestId: number
-  ): Promise<ApiResponse<{ data: { contestId: number; status: string } }>> {
-    return this.request<{ data: { contestId: number; status: string } }>(
-      `/contests/${contestId}/status`,
-      {
-        method: "GET",
-      }
-    );
-  }
-
-  async getTestCases(
-    challengeId: number
-  ): Promise<ApiResponse<{ data: TestCase[] }>> {
-    return this.request<{ data: TestCase[] }>(
-      `/challenges/${challengeId}/testcases`,
-      {
-        method: "GET",
-      }
-    );
   }
 
   async submitChallengeSolution(
@@ -573,59 +657,34 @@ class ApiService {
     });
   }
 
-  async createCodeTemplate(
-    challengeId: number,
-    codeTemplate: CodeTemplateCreate,
+  // DELETE Methods
+  async deleteContest(
+    contestId: number,
     token: string
   ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/challenges/${challengeId}/templates`, {
-      method: "POST",
+    return this.request<any>(`/contests/${contestId}`, {
+      method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(codeTemplate),
     });
   }
 
-  async getCodeTemplates(
-    challengeId: number
-  ): Promise<ApiResponse<{ data: CodeTemplateCreate[] }>> {
-    return this.request<{ data: CodeTemplateCreate[] }>(
-      `/challenges/${challengeId}/templates`,
-      {
-        method: "GET",
-      }
-    );
-  }
-
-  async createBulkCodeTemplates(
-    challengeId: number,
-    templates: BulkCodeTemplateCreate,
+  async unregisterFromContest(
+    contestId: number,
     token: string
-  ): Promise<
-    ApiResponse<{ data: { challenge_id: number; templates_created: number } }>
-  > {
-    return this.request<{
-      data: { challenge_id: number; templates_created: number };
-    }>(`/challenges/${challengeId}/templates/bulk`, {
-      method: "POST",
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/contests/${contestId}/register`, {
+      method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(templates),
     });
   }
 
-  async getSubmissionsForChallenge(
-    challengeId: number
-  ): Promise<ApiResponse<{ data: Submission[] }>> {
-    return this.request<{ data: Submission[] }>(
-      `/challenges/${challengeId}/submissions`,
-      {
-        method: "GET",
-      }
-    );
-  }
+  // ============================================================================
+  // SUBMISSION ENDPOINTS
+  // ============================================================================
 
   async getUserSubmissions(
     token: string

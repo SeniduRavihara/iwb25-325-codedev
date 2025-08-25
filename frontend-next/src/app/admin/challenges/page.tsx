@@ -30,7 +30,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function AdminChallengesPage() {
   const { token } = useAuth();
@@ -40,6 +40,11 @@ export default function AdminChallengesPage() {
   const [deletingChallenge, setDeletingChallenge] = useState<number | null>(
     null
   );
+
+  // Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   useEffect(() => {
     const fetchChallenges = async () => {
@@ -93,6 +98,40 @@ export default function AdminChallengesPage() {
         return "default";
     }
   };
+
+  // Filter and sort challenges
+  const filteredChallenges = useMemo(() => {
+    return challenges.filter((challenge) => {
+      // Search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch =
+          challenge.title.toLowerCase().includes(searchLower) ||
+          challenge.description.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Difficulty filter
+      if (difficultyFilter !== "all") {
+        if (challenge.difficulty !== difficultyFilter) return false;
+      }
+
+      // Category filter (check tags)
+      if (categoryFilter !== "all") {
+        try {
+          const tagsArray = JSON.parse(challenge.tags);
+          const hasCategory = tagsArray.some((tag: string) =>
+            tag.toLowerCase().includes(categoryFilter.toLowerCase())
+          );
+          if (!hasCategory) return false;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [challenges, searchTerm, difficultyFilter, categoryFilter]);
 
   const handleDeleteChallenge = async (challengeId: number) => {
     if (!token) {
@@ -150,10 +189,15 @@ export default function AdminChallengesPage() {
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search challenges..." className="pl-10" />
+          <Input
+            placeholder="Search challenges..."
+            className="pl-10 border-2 border-border focus:border-primary"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Select>
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
             <SelectValue placeholder="Difficulty" />
           </SelectTrigger>
           <SelectContent>
@@ -163,8 +207,8 @@ export default function AdminChallengesPage() {
             <SelectItem value="hard">Hard</SelectItem>
           </SelectContent>
         </Select>
-        <Select>
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -175,6 +219,11 @@ export default function AdminChallengesPage() {
             <SelectItem value="linked-lists">Linked Lists</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground mb-4">
+        {filteredChallenges.length} of {challenges.length} challenges
       </div>
 
       {/* Loading State */}
@@ -194,108 +243,123 @@ export default function AdminChallengesPage() {
       {/* Challenges Grid */}
       {!loading && !error && (
         <div className="grid gap-6">
-          {challenges.map((challenge) => (
-            <Card
-              key={challenge.id}
-              className="hover:shadow-lg transition-shadow"
-            >
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-xl">
-                        <Link
-                          href={`/admin/challenges/${challenge.id}`}
-                          className="hover:text-primary transition-colors"
+          {filteredChallenges.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                <p className="text-lg font-medium mb-2">No challenges found</p>
+                <p className="text-sm">
+                  Try adjusting your search or filter criteria
+                </p>
+              </div>
+            </div>
+          ) : (
+            filteredChallenges.map((challenge) => (
+              <Card
+                key={challenge.id}
+                className="hover:shadow-lg transition-shadow"
+              >
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle className="text-xl">
+                          <Link
+                            href={`/admin/challenges/${challenge.id}`}
+                            className="hover:text-primary transition-colors"
+                          >
+                            {challenge.title}
+                          </Link>
+                        </CardTitle>
+                        <Badge
+                          variant={getDifficultyBadge(challenge.difficulty)}
                         >
-                          {challenge.title}
+                          {challenge.difficulty.charAt(0).toUpperCase() +
+                            challenge.difficulty.slice(1)}
+                        </Badge>
+                      </div>
+                      <CardDescription className="mb-3">
+                        {challenge.description}
+                      </CardDescription>
+                      <div className="flex flex-wrap gap-2">
+                        {(() => {
+                          try {
+                            const tagsArray = JSON.parse(challenge.tags);
+                            return tagsArray.map(
+                              (tag: string, index: number) => (
+                                <Badge
+                                  key={index}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              )
+                            );
+                          } catch (error) {
+                            return (
+                              <span className="text-muted-foreground text-xs">
+                                No tags
+                              </span>
+                            );
+                          }
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/challenges/${challenge.id}`}>
+                          <Eye className="h-4 w-4" />
                         </Link>
-                      </CardTitle>
-                      <Badge variant={getDifficultyBadge(challenge.difficulty)}>
-                        {challenge.difficulty.charAt(0).toUpperCase() +
-                          challenge.difficulty.slice(1)}
-                      </Badge>
-                    </div>
-                    <CardDescription className="mb-3">
-                      {challenge.description}
-                    </CardDescription>
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        try {
-                          const tagsArray = JSON.parse(challenge.tags);
-                          return tagsArray.map((tag: string, index: number) => (
-                            <Badge
-                              key={index}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ));
-                        } catch (error) {
-                          return (
-                            <span className="text-muted-foreground text-xs">
-                              No tags
-                            </span>
-                          );
-                        }
-                      })()}
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/challenges/${challenge.id}/edit`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteChallenge(challenge.id)}
+                        disabled={deletingChallenge === challenge.id}
+                      >
+                        {deletingChallenge === challenge.id ? (
+                          <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/challenges/${challenge.id}`}>
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/admin/challenges/${challenge.id}/edit`}>
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteChallenge(challenge.id)}
-                      disabled={deletingChallenge === challenge.id}
-                    >
-                      {deletingChallenge === challenge.id ? (
-                        <div className="h-4 w-4 border-2 border-destructive border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">Time Limit</div>
-                      <div>{challenge.time_limit}ms</div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Time Limit</div>
+                        <div>{challenge.time_limit}ms</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Submissions</div>
+                        <div>{challenge.submissions_count}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Star className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">Success Rate</div>
+                        <div>{Math.round(challenge.success_rate * 100)}%</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">Submissions</div>
-                      <div>{challenge.submissions_count}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Star className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">Success Rate</div>
-                      <div>{Math.round(challenge.success_rate * 100)}%</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       )}
     </div>
