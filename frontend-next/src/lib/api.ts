@@ -186,6 +186,40 @@ export interface CodeTemplateUpdate {
   execution_template: string;
 }
 
+export interface Submission {
+  id: number;
+  user_id: number;
+  challenge_id: number;
+  contest_id?: number;
+  code: string;
+  language: string;
+  status: string; // "pending", "running", "completed", "failed"
+  result: string; // "accepted", "wrong_answer", "time_limit_exceeded", "memory_limit_exceeded", "runtime_error", "compilation_error"
+  score: number;
+  execution_time?: number; // in milliseconds
+  memory_used?: number; // in KB
+  error_message?: string;
+  test_cases_passed: number;
+  total_test_cases: number;
+  submitted_at: string;
+}
+
+export interface SubmissionResult {
+  challengeId: number;
+  challengeTitle: string;
+  difficulty: string;
+  attempted: boolean;
+  completed: boolean;
+  score: number;
+  maxScore: number;
+  timeSpent: number;
+  submissionTime?: string;
+  tags: string[];
+  result: string;
+  testCasesPassed: number;
+  totalTestCases: number;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -579,6 +613,28 @@ class ApiService {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(templates),
+    });
+  }
+
+  async getSubmissionsForChallenge(
+    challengeId: number
+  ): Promise<ApiResponse<{ data: Submission[] }>> {
+    return this.request<{ data: Submission[] }>(
+      `/challenges/${challengeId}/submissions`,
+      {
+        method: "GET",
+      }
+    );
+  }
+
+  async getUserSubmissions(
+    token: string
+  ): Promise<ApiResponse<{ data: Submission[] }>> {
+    return this.request<{ data: Submission[] }>("/user/submissions", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
   }
 }

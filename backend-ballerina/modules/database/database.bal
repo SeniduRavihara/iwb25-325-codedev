@@ -422,6 +422,52 @@ public function createBulkCodeTemplates(models:BulkCodeTemplateCreate templatesD
     return;
 }
 
+public function getSubmissionsByChallengeId(int challengeId) returns models:Submission[]|error {
+    stream<record {}, sql:Error?> submissionStream = dbClient->query(`
+        SELECT id, user_id, challenge_id, contest_id, code, language, status, result, score, 
+               execution_time, memory_used, error_message, test_cases_passed, total_test_cases, 
+               submitted_at 
+        FROM submissions 
+        WHERE challenge_id = ${challengeId}
+        ORDER BY submitted_at DESC
+    `);
+
+    models:Submission[] submissions = [];
+    record {|record {} value;|}|error? result = submissionStream.next();
+
+    while result is record {|record {} value;|} {
+        record {} rawSubmission = result.value;
+
+        models:Submission submission = {
+            id: <int>rawSubmission["id"],
+            user_id: <int>rawSubmission["user_id"],
+            challenge_id: <int>rawSubmission["challenge_id"],
+            contest_id: rawSubmission["contest_id"] == () ? () : <int>rawSubmission["contest_id"],
+            code: <string>rawSubmission["code"],
+            language: <string>rawSubmission["language"],
+            status: <string>rawSubmission["status"],
+            result: <string>rawSubmission["result"],
+            score: <int>rawSubmission["score"],
+            execution_time: rawSubmission["execution_time"] == () ? () : <int>rawSubmission["execution_time"],
+            memory_used: rawSubmission["memory_used"] == () ? () : <int>rawSubmission["memory_used"],
+            error_message: rawSubmission["error_message"] == () ? () : <string>rawSubmission["error_message"],
+            test_cases_passed: <int>rawSubmission["test_cases_passed"],
+            total_test_cases: <int>rawSubmission["total_test_cases"],
+            submitted_at: <string>rawSubmission["submitted_at"]
+        };
+
+        submissions.push(submission);
+        result = submissionStream.next();
+    }
+
+    error? closeResult = submissionStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    return submissions;
+}
+
 // ------------------------------------------------------------------
 
 // Add challenge to contest
@@ -887,6 +933,66 @@ public function getUserContestProgress(int userId, int contestId) returns record
 
     while result is record {|record {} value;|} {
         submissions.push(result.value);
+        result = resultStream.next();
+    }
+
+    error? closeResult = resultStream.close();
+    if closeResult is error {
+        return closeResult;
+    }
+
+    return submissions;
+}
+
+// Get all submissions for a specific user
+public function getUserSubmissions(int userId) returns models:Submission[]|error {
+    stream<record {}, sql:Error?> resultStream = dbClient->query(`
+        SELECT 
+            s.id,
+            s.user_id,
+            s.challenge_id,
+            s.contest_id,
+            s.code,
+            s.language,
+            s.status,
+            s.result,
+            s.score,
+            s.execution_time,
+            s.memory_used,
+            s.error_message,
+            s.test_cases_passed,
+            s.total_test_cases,
+            s.submitted_at
+        FROM submissions s
+        WHERE s.user_id = ${userId}
+        ORDER BY s.submitted_at DESC
+    `);
+
+    models:Submission[] submissions = [];
+    record {|record {} value;|}|error? result = resultStream.next();
+
+    while result is record {|record {} value;|} {
+        record {} rawSubmission = result.value;
+
+        models:Submission submission = {
+            id: <int>rawSubmission["id"],
+            user_id: <int>rawSubmission["user_id"],
+            challenge_id: <int>rawSubmission["challenge_id"],
+            contest_id: rawSubmission["contest_id"] == () ? () : <int>rawSubmission["contest_id"],
+            code: <string>rawSubmission["code"],
+            language: <string>rawSubmission["language"],
+            status: <string>rawSubmission["status"],
+            result: <string>rawSubmission["result"],
+            score: <int>rawSubmission["score"],
+            execution_time: rawSubmission["execution_time"] == () ? () : <int>rawSubmission["execution_time"],
+            memory_used: rawSubmission["memory_used"] == () ? () : <int>rawSubmission["memory_used"],
+            error_message: rawSubmission["error_message"] == () ? () : <string>rawSubmission["error_message"],
+            test_cases_passed: <int>rawSubmission["test_cases_passed"],
+            total_test_cases: <int>rawSubmission["total_test_cases"],
+            submitted_at: <string>rawSubmission["submitted_at"]
+        };
+
+        submissions.push(submission);
         result = resultStream.next();
     }
 

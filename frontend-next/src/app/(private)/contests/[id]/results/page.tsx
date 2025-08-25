@@ -11,24 +11,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiService, type Challenge, type Contest } from "@/lib/api";
+import {
+  apiService,
+  Submission,
+  SubmissionResult,
+  type Challenge,
+  type Contest,
+} from "@/lib/api";
 import { CheckCircle, Clock, Trophy, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
-
-interface SubmissionResult {
-  challengeId: number;
-  challengeTitle: string;
-  difficulty: string;
-  attempted: boolean;
-  completed: boolean;
-  score: number;
-  maxScore: number;
-  timeSpent: number;
-  submissionTime?: string;
-  tags: string[];
-}
 
 export default function ContestResultsPage({
   params,
@@ -85,7 +78,9 @@ export default function ContestResultsPage({
         }
 
         // Fetch challenges for this contest
-        const challengesResponse = await apiService.getChallenges();
+        const challengesResponse = await apiService.getChallengesForContest(
+          contestId
+        );
         if (
           challengesResponse.success &&
           challengesResponse.data &&
@@ -94,38 +89,151 @@ export default function ContestResultsPage({
           const challengeData = challengesResponse.data.data;
           setChallenges(challengeData);
 
-          // For now, we'll generate mock results since we don't have a submissions endpoint
-          // In a real application, you would fetch actual submission data from the backend
-          const mockResults: SubmissionResult[] = challengeData.map(
-            (challenge: Challenge, index: number) => ({
-              challengeId: challenge.id,
-              challengeTitle: challenge.title,
-              difficulty: challenge.difficulty,
-              attempted: Math.random() > 0.3, // 70% chance of attempting
-              completed: Math.random() > 0.5, // 50% chance of completing
-              score: Math.floor(Math.random() * 100),
-              maxScore: 100,
-              timeSpent: Math.floor(Math.random() * 60), // Random time between 0-60 minutes
-              submissionTime: new Date(
-                Date.now() - Math.random() * 7200000
-              ).toISOString(), // Random time in last 2 hours
-              tags: JSON.parse(challenge.tags),
-            })
+          // Fetch submissions for each challenge and build results
+          const resultsPromises = challengeData.map(
+            async (challenge: Challenge) => {
+              try {
+                const submissionsResponse =
+                  await apiService.getSubmissionsForChallenge(challenge.id);
+
+                console.log("challenge", challenge.id);
+                console.log("submissionsResponse", submissionsResponse);
+
+                if (submissionsResponse.success && submissionsResponse.data) {
+                  const submissions = submissionsResponse.data.data;
+
+                  // Find user's submission for this challenge
+                  const userSubmission = submissions.find(
+                    (s: Submission) => s.user_id === user?.id
+                  );
+
+                  if (userSubmission) {
+                    // User has attempted this challenge
+                    return {
+                      challengeId: challenge.id,
+                      challengeTitle: challenge.title,
+                      difficulty: challenge.difficulty,
+                      attempted: true,
+                      completed: userSubmission.result === "accepted",
+                      score: userSubmission.score,
+                      maxScore: 100, // Assuming max score is 100
+                      timeSpent: userSubmission.execution_time
+                        ? Math.floor(userSubmission.execution_time / 1000 / 60)
+                        : 0, // Convert ms to minutes
+                      submissionTime: userSubmission.submitted_at,
+                      tags: (() => {
+                        try {
+                          return Array.isArray(challenge.tags)
+                            ? challenge.tags
+                            : JSON.parse(challenge.tags);
+                        } catch {
+                          return [];
+                        }
+                      })(),
+                      result: userSubmission.result,
+                      testCasesPassed: userSubmission.test_cases_passed,
+                      totalTestCases: userSubmission.total_test_cases,
+                    };
+                  } else {
+                    // User hasn't attempted this challenge
+                    return {
+                      challengeId: challenge.id,
+                      challengeTitle: challenge.title,
+                      difficulty: challenge.difficulty,
+                      attempted: false,
+                      completed: false,
+                      score: 0,
+                      maxScore: 100,
+                      timeSpent: 0,
+                      submissionTime: undefined,
+                      tags: (() => {
+                        try {
+                          return Array.isArray(challenge.tags)
+                            ? challenge.tags
+                            : JSON.parse(challenge.tags);
+                        } catch {
+                          return [];
+                        }
+                      })(),
+                      result: "not_attempted",
+                      testCasesPassed: 0,
+                      totalTestCases: 0,
+                    };
+                  }
+                } else {
+                  // No submissions data available, treat as not attempted
+                  return {
+                    challengeId: challenge.id,
+                    challengeTitle: challenge.title,
+                    difficulty: challenge.difficulty,
+                    attempted: false,
+                    completed: false,
+                    score: 0,
+                    maxScore: 100,
+                    timeSpent: 0,
+                    submissionTime: undefined,
+                    tags: (() => {
+                      try {
+                        return Array.isArray(challenge.tags)
+                          ? challenge.tags
+                          : JSON.parse(challenge.tags);
+                      } catch {
+                        return [];
+                      }
+                    })(),
+                    result: "not_attempted",
+                    testCasesPassed: 0,
+                    totalTestCases: 0,
+                  };
+                }
+              } catch (error) {
+                console.error(
+                  `Error fetching submissions for challenge ${challenge.id}:`,
+                  error
+                );
+                // Return not attempted if there's an error
+                return {
+                  challengeId: challenge.id,
+                  challengeTitle: challenge.title,
+                  difficulty: challenge.difficulty,
+                  attempted: false,
+                  completed: false,
+                  score: 0,
+                  maxScore: 100,
+                  timeSpent: 0,
+                  submissionTime: undefined,
+                  tags: (() => {
+                    try {
+                      return Array.isArray(challenge.tags)
+                        ? challenge.tags
+                        : JSON.parse(challenge.tags);
+                    } catch {
+                      return [];
+                    }
+                  })(),
+                  result: "not_attempted",
+                  testCasesPassed: 0,
+                  totalTestCases: 0,
+                };
+              }
+            }
           );
 
-          setResults(mockResults);
+          // Wait for all submission queries to complete
+          const resultsData = await Promise.all(resultsPromises);
+          setResults(resultsData);
 
           // Calculate overall stats
-          const totalScore = mockResults.reduce(
+          const totalScore = resultsData.reduce(
             (sum, result) => sum + result.score,
             0
           );
-          const maxPossibleScore = mockResults.length * 100;
-          const problemsAttempted = mockResults.filter(
+          const maxPossibleScore = resultsData.length * 100;
+          const problemsAttempted = resultsData.filter(
             (r) => r.attempted
           ).length;
-          const problemsSolved = mockResults.filter((r) => r.completed).length;
-          const totalTimeSpent = mockResults.reduce(
+          const problemsSolved = resultsData.filter((r) => r.completed).length;
+          const totalTimeSpent = resultsData.reduce(
             (sum, result) => sum + result.timeSpent,
             0
           );
@@ -136,8 +244,8 @@ export default function ContestResultsPage({
             problemsAttempted,
             problemsSolved,
             totalTimeSpent,
-            rank: Math.floor(Math.random() * 50) + 1, // Mock rank
-            totalParticipants: 147, // Mock total participants
+            rank: Math.floor(Math.random() * 50) + 1, // Mock rank - TODO: implement real ranking
+            totalParticipants: 147, // Mock total participants - TODO: implement real count
           });
         }
       } catch (err) {
@@ -358,15 +466,26 @@ export default function ContestResultsPage({
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {result.tags.map((tag: string, tagIndex: number) => (
-                          <Badge
-                            key={tagIndex}
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {tag}
-                          </Badge>
-                        ))}
+                        {(() => {
+                          try {
+                            const tagsArray = Array.isArray(result.tags)
+                              ? result.tags
+                              : JSON.parse(result.tags);
+                            return tagsArray.map(
+                              (tag: string, tagIndex: number) => (
+                                <Badge
+                                  key={tagIndex}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {tag}
+                                </Badge>
+                              )
+                            );
+                          } catch {
+                            return null;
+                          }
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -379,6 +498,12 @@ export default function ContestResultsPage({
                     >
                       {result.score}/{result.maxScore}
                     </div>
+                    {result.attempted && (
+                      <div className="text-sm text-muted-foreground">
+                        {result.testCasesPassed}/{result.totalTestCases} test
+                        cases passed
+                      </div>
+                    )}
                     <div className="text-sm text-muted-foreground">
                       {result.attempted ? formatTime(result.timeSpent) : "-"}
                     </div>

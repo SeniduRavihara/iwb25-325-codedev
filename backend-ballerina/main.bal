@@ -901,6 +901,81 @@ service / on new http:Listener(serverPort) {
         check caller->respond(response);
     }
 
+    // Get submissions for a specific challenge (public)
+
+    resource function get challenges/[int challengeId]/submissions(http:Caller caller, http:Request req) returns error? {
+        models:Submission[]|error submissions = database:getSubmissionsByChallengeId(challengeId);
+
+        if submissions is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch submissions: " + submissions.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+                "success": true,
+                "data": submissions
+            });
+        check caller->respond(response);
+    }
+
+    // Get all submissions for the authenticated user
+    resource function get user/submissions(http:Caller caller, http:Request req) returns error? {
+        // Check authentication
+        string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Authorization header required"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        string token = authHeader.substring(7);
+        models:User|models:ErrorResponse userResult = auth:getUserProfile(token);
+        if userResult is models:ErrorResponse {
+            http:Response response = new;
+            response.statusCode = 401;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Invalid token"
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        // Get user's submissions
+        models:Submission[]|error submissions = database:getUserSubmissions(userResult.id);
+        if submissions is error {
+            http:Response response = new;
+            response.statusCode = 500;
+            response.setJsonPayload({
+                "success": false,
+                "message": "Failed to fetch user submissions: " + submissions.message()
+            });
+            check caller->respond(response);
+            return;
+        }
+
+        http:Response response = new;
+        response.statusCode = 200;
+        response.setJsonPayload({
+            "success": true,
+            "data": submissions
+        });
+        check caller->respond(response);
+    }
+
     // Debug endpoint to check database state
     resource function get debug/database(http:Caller caller, http:Request req) returns error? {
         // Get all contests

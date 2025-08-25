@@ -20,10 +20,41 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiService, type Contest } from "@/lib/api";
-import { Calendar, Clock, Plus, Search, Trophy, Users } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Filter,
+  Plus,
+  RefreshCw,
+  Search,
+  SortAsc,
+  SortDesc,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type SortField =
+  | "title"
+  | "start_time"
+  | "duration"
+  | "participants_count"
+  | "status";
+type SortOrder = "asc" | "desc";
+type StatusFilter = "all" | "upcoming" | "active" | "completed";
+interface FilterState {
+  search: string;
+  status: StatusFilter;
+  registrationStatus: "all" | "registered" | "not_registered";
+}
+
+interface SortState {
+  field: SortField;
+  order: SortOrder;
+}
 
 export default function ContestsPage() {
   const { isAuthenticated, user, token, isLoading } = useAuth();
@@ -37,6 +68,18 @@ export default function ContestsPage() {
   const [registeringContest, setRegisteringContest] = useState<number | null>(
     null
   );
+
+  // Filter and sort state
+  const [filters, setFilters] = useState<FilterState>({
+    search: "",
+    status: "all",
+    registrationStatus: "all",
+  });
+  const [sort, setSort] = useState<SortState>({
+    field: "start_time",
+    order: "asc",
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch contests from API and check registration status
   useEffect(() => {
@@ -104,6 +147,91 @@ export default function ContestsPage() {
 
     fetchContests();
   }, [token, isAuthenticated, isLoading, router]);
+
+  // Filter and sort contests
+  const filteredAndSortedContests = useMemo(() => {
+    const filtered = contests.filter((contest) => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesSearch =
+          contest.title.toLowerCase().includes(searchLower) ||
+          contest.description.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (filters.status !== "all") {
+        if (contest.status !== filters.status) return false;
+      }
+
+      // Registration status filter
+      if (filters.registrationStatus !== "all") {
+        const isRegistered = registrationStatus[contest.id] || false;
+        if (filters.registrationStatus === "registered" && !isRegistered)
+          return false;
+        if (filters.registrationStatus === "not_registered" && isRegistered)
+          return false;
+      }
+
+      return true;
+    });
+
+    // Sort contests
+    filtered.sort((a, b) => {
+      let aValue: string | number, bValue: string | number;
+
+      switch (sort.field) {
+        case "title":
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case "start_time":
+          aValue = new Date(a.start_time).getTime();
+          bValue = new Date(b.start_time).getTime();
+          break;
+        case "duration":
+          aValue = a.duration;
+          bValue = b.duration;
+          break;
+        case "participants_count":
+          aValue = a.participants_count;
+          bValue = b.participants_count;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        default:
+          return 0;
+      }
+
+      if (sort.order === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return filtered;
+  }, [contests, filters, sort, registrationStatus]);
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters({
+      search: "",
+      status: "all",
+      registrationStatus: "all",
+    });
+  }, []);
+
+  // Toggle sort order
+  const toggleSort = useCallback((field: SortField) => {
+    setSort((prev) => ({
+      field,
+      order: prev.field === field && prev.order === "asc" ? "desc" : "asc",
+    }));
+  }, []);
 
   // Show loading or redirect if not authenticated
   if (isLoading) {
@@ -257,6 +385,22 @@ export default function ContestsPage() {
     }
   };
 
+  const getSortIcon = (field: SortField) => {
+    if (sort.field !== field) {
+      return <SortAsc className="h-4 w-4 text-muted-foreground" />;
+    }
+    return sort.order === "asc" ? (
+      <SortAsc className="h-4 w-4 text-primary" />
+    ) : (
+      <SortDesc className="h-4 w-4 text-primary" />
+    );
+  };
+
+  const hasActiveFilters =
+    filters.search ||
+    filters.status !== "all" ||
+    filters.registrationStatus !== "all";
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -281,39 +425,220 @@ export default function ContestsPage() {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
+        {/* Search and Filter Controls */}
+        <div className="space-y-4 mb-8">
+          {/* Search Bar */}
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search contests..." className="pl-10" />
+            <Input
+              placeholder="Search contests by title or description..."
+              className="pl-10 pr-10 border-2 border-border focus:border-primary"
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, search: e.target.value }))
+              }
+            />
+            {filters.search && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
+                onClick={() => setFilters((prev) => ({ ...prev, search: "" }))}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          <Select>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Duration" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Durations</SelectItem>
-              <SelectItem value="short">Short (&lt;=2h)</SelectItem>
-              <SelectItem value="medium">Medium (2-4h)</SelectItem>
-              <SelectItem value="long">Long (&gt;4h)</SelectItem>
-            </SelectContent>
-          </Select>
+
+          {/* Filter Toggle and Quick Filters */}
+          <div className="flex flex-wrap items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 border-2 border-border hover:border-primary"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1">
+                  {
+                    Object.values(filters).filter(
+                      (v) => v !== "all" && v !== ""
+                    ).length
+                  }
+                </Badge>
+              )}
+            </Button>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center gap-2 border-2 border-border hover:border-primary hover:bg-muted/50"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Clear All
+              </Button>
+            )}
+
+            {/* Results count */}
+            <div className="text-sm text-muted-foreground ml-auto">
+              {filteredAndSortedContests.length} of {contests.length} contests
+            </div>
+          </div>
+
+          {/* Advanced Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg border-2 border-border">
+              <Select
+                value={filters.status}
+                onValueChange={(value: StatusFilter) =>
+                  setFilters((prev) => ({ ...prev, status: value }))
+                }
+              >
+                <SelectTrigger className="border-2 border-border focus:border-primary">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="upcoming">Upcoming</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.registrationStatus}
+                onValueChange={(
+                  value: "all" | "registered" | "not_registered"
+                ) =>
+                  setFilters((prev) => ({ ...prev, registrationStatus: value }))
+                }
+              >
+                <SelectTrigger className="border-2 border-border focus:border-primary">
+                  <SelectValue placeholder="Registration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Contests</SelectItem>
+                  <SelectItem value="registered">Registered</SelectItem>
+                  <SelectItem value="not_registered">Not Registered</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Sort by:</span>
+                <div className="flex gap-1">
+                  {(["title", "start_time"] as SortField[]).map((field) => (
+                    <Button
+                      key={field}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleSort(field)}
+                      className="h-8 px-2 border border-border hover:border-primary hover:bg-muted/50"
+                    >
+                      {getSortIcon(field)}
+                      <span className="ml-1 text-xs capitalize">
+                        {field.replace("_", " ")}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {filters.search && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Search: &quot;{filters.search}&quot;
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 ml-1"
+                  onClick={() =>
+                    setFilters((prev) => ({ ...prev, search: "" }))
+                  }
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            )}
+            {filters.status !== "all" && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Status: {filters.status}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 ml-1"
+                  onClick={() =>
+                    setFilters((prev) => ({ ...prev, status: "all" }))
+                  }
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            )}
+            {filters.registrationStatus !== "all" && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Registration: {filters.registrationStatus.replace("_", " ")}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 ml-1"
+                  onClick={() =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      registrationStatus: "all",
+                    }))
+                  }
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* No Results */}
+        {filteredAndSortedContests.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-muted-foreground mb-4">
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-lg font-medium mb-2">No contests found</p>
+                  <p className="text-sm">
+                    Try adjusting your filters or search terms
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-medium mb-2">
+                    No contests available
+                  </p>
+                  <p className="text-sm">Check back later for new contests</p>
+                </>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                onClick={clearFilters}
+                className="border-2 border-border hover:border-primary"
+              >
+                Clear All Filters
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Contests Grid */}
         <div className="grid gap-6">
-          {contests.map((contest) => (
+          {filteredAndSortedContests.map((contest) => (
             <Card
               key={contest.id}
               className="hover:shadow-lg transition-shadow"
@@ -344,6 +669,14 @@ export default function ContestsPage() {
                               Finished
                             </Badge>
                           )}
+                        {registrationStatus[contest.id] && (
+                          <Badge
+                            variant="outline"
+                            className="bg-green-50 text-green-700 border-green-200"
+                          >
+                            Registered
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     <CardDescription className="mb-3">
