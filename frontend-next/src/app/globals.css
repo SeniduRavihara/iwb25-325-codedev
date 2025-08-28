@@ -121,3 +121,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom font classes */
+.font-orbitron {
+  font-family: var(--font-orbitron), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-jetbrains-mono {
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}

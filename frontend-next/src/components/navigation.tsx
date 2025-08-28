@@ -56,8 +56,9 @@ export function Navigation() {
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center space-x-2">
               <Code className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold text-foreground">
-                HackathonPlus
+              <span className="text-xl font-bold text-foreground font-orbitron">
+                <span className="text-primary">Hackathon</span>
+                <span className="text-accent">Plus</span>
               </span>
             </Link>
 
@@ -71,7 +72,7 @@ export function Navigation() {
                       key={item.name}
                       href={item.href}
                       className={cn(
-                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                        "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors font-jetbrains-mono",
                         pathname === item.href
                           ? "bg-primary text-primary-foreground"
                           : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -91,7 +92,7 @@ export function Navigation() {
               <div className="relative">
                 <Button
                   variant="ghost"
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-2 font-jetbrains-mono"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
                   <User className="h-4 w-4" />
@@ -105,7 +106,7 @@ export function Navigation() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-md shadow-lg z-50">
                     <div className="py-1">
-                      <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border">
+                      <div className="px-4 py-2 text-sm text-muted-foreground border-b border-border font-jetbrains-mono">
                         <div className="font-medium">{user?.username}</div>
                         <div className="text-xs">{user?.email}</div>
                         <div className="text-xs capitalize">{user?.role}</div>
@@ -113,7 +114,7 @@ export function Navigation() {
 
                       <Link
                         href="/profile"
-                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent font-jetbrains-mono"
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         <User className="h-4 w-4 mr-2" />
@@ -122,7 +123,7 @@ export function Navigation() {
 
                       <Link
                         href="/settings"
-                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-accent font-jetbrains-mono"
                         onClick={() => setIsDropdownOpen(false)}
                       >
                         <Settings className="h-4 w-4 mr-2" />
@@ -131,7 +132,7 @@ export function Navigation() {
 
                       <button
                         onClick={handleLogout}
-                        className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-accent"
+                        className="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-accent font-jetbrains-mono"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
                         Sign Out
@@ -142,10 +143,10 @@ export function Navigation() {
               </div>
             ) : isClient && !isAuthenticated ? (
               <>
-                <Button variant="ghost" asChild>
+                <Button variant="ghost" asChild className="font-jetbrains-mono">
                   <Link href="/login">Login</Link>
                 </Button>
-                <Button asChild>
+                <Button asChild className="font-jetbrains-mono">
                   <Link href="/signup">Sign Up</Link>
                 </Button>
               </>

@@ -8,8 +8,11 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-foreground">HackathonPlus</h3>
-            <p className="text-muted-foreground">
+            <h3 className="text-xl font-bold text-foreground font-orbitron">
+              <span className="text-primary">Hackathon</span>
+              <span className="text-accent">Plus</span>
+            </h3>
+            <p className="text-muted-foreground font-jetbrains-mono">
               Empowering developers to build amazing coding careers through
               competitive programming and skill development.
             </p>
@@ -43,12 +46,12 @@ export function Footer() {
 
           {/* Platform */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Platform</h4>
+            <h4 className="font-semibold text-foreground font-orbitron">Platform</h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="/contests"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Contests
                 </Link>
@@ -56,7 +59,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/leaderboard"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Leaderboard
                 </Link>
@@ -64,7 +67,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Timer
                 </Link>
@@ -72,7 +75,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/admin"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Admin Panel
                 </Link>
@@ -82,12 +85,12 @@ export function Footer() {
 
           {/* Resources */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Resources</h4>
+            <h4 className="font-semibold text-foreground font-orbitron">Resources</h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Documentation
                 </Link>
@@ -95,7 +98,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Tutorials
                 </Link>
@@ -103,7 +106,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Blog
                 </Link>
@@ -111,7 +114,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Community
                 </Link>
@@ -121,12 +124,12 @@ export function Footer() {
 
           {/* Support */}
           <div className="space-y-4">
-            <h4 className="font-semibold text-foreground">Support</h4>
+            <h4 className="font-semibold text-foreground font-orbitron">Support</h4>
             <ul className="space-y-2">
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Help Center
                 </Link>
@@ -134,7 +137,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Contact Us
                 </Link>
@@ -142,7 +145,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Privacy Policy
                 </Link>
@@ -150,7 +153,7 @@ export function Footer() {
               <li>
                 <Link
                   href="#"
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  className="text-muted-foreground hover:text-primary transition-colors font-jetbrains-mono"
                 >
                   Terms of Service
                 </Link>
@@ -160,8 +163,8 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center">
-          <p className="text-muted-foreground">
-            © 2024 HackathonPlus. All rights reserved. Built with passion for
+          <p className="text-muted-foreground font-jetbrains-mono">
+            © 2024 <span className="font-orbitron text-primary">HackathonPlus</span>. All rights reserved. Built with passion for
             developers.
           </p>
         </div>
