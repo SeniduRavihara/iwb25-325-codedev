@@ -42,7 +42,7 @@ export default function AdminLayout({
   // Show loading if AuthContext is still loading
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center font-jetbrains-mono">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">Loading...</p>
@@ -54,7 +54,7 @@ export default function AdminLayout({
   // Show loading if not authenticated or not admin
   if (!isAuthenticated || user?.role !== "admin") {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center font-jetbrains-mono">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-muted-foreground">
@@ -68,16 +68,16 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background font-jetbrains-mono">
       <Navigation />
 
       <div className="flex">
         {/* Admin Sidebar */}
-        <div className="w-64 bg-card border-r border-border min-h-screen">
+        <div className="w-64 bg-card/80 backdrop-blur-sm border-r border-border/50 min-h-screen">
           <div className="p-6">
             <div className="flex items-center space-x-2 mb-6">
               <Shield className="h-6 w-6 text-yellow-500" />
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className="text-lg font-semibold text-foreground font-orbitron">
                 Admin Panel
               </h2>
             </div>
@@ -90,7 +90,7 @@ export default function AdminLayout({
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors font-jetbrains-mono",
                       pathname === item.href
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent"

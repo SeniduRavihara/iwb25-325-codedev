@@ -1,33 +1,39 @@
-import { Navigation } from "@/components/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { mockGlobalUsers, mockContestParticipants, mockContests } from "@/lib/mock-data"
-import { Trophy, Medal, Award, TrendingUp, Calendar, Code } from "lucide-react"
+import { Navigation } from "@/components/navigation";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  mockContestParticipants,
+  mockContests,
+  mockGlobalUsers,
+} from "@/lib/mock-data";
+import { Award, Calendar, Code, Medal, TrendingUp, Trophy } from "lucide-react";
 
 export default function LeaderboardPage() {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Trophy className="h-5 w-5 text-yellow-500" />
+        return <Trophy className="h-5 w-5 text-yellow-500" />;
       case 2:
-        return <Medal className="h-5 w-5 text-gray-400" />
+        return <Medal className="h-5 w-5 text-gray-400" />;
       case 3:
-        return <Award className="h-5 w-5 text-amber-600" />
+        return <Award className="h-5 w-5 text-amber-600" />;
       default:
-        return <span className="text-muted-foreground font-medium">#{rank}</span>
+        return (
+          <span className="text-muted-foreground font-medium">#{rank}</span>
+        );
     }
-  }
+  };
 
   const getInitials = (username: string) => {
-    return username.slice(0, 2).toUpperCase()
-  }
+    return username.slice(0, 2).toUpperCase();
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -35,12 +41,16 @@ export default function LeaderboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
-          <p className="text-muted-foreground mt-2">See how you rank against other developers on CodeArena</p>
+          <h1 className="text-3xl font-bold text-foreground font-orbitron">
+            Leaderboard
+          </h1>
+          <p className="text-muted-foreground mt-2 font-jetbrains-mono">
+            See how you rank against other developers on CodeArena
+          </p>
         </div>
 
         <Tabs defaultValue="global" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-3 border-2 border-border/50 bg-background/50 font-jetbrains-mono">
             <TabsTrigger value="global">Global Rankings</TabsTrigger>
             <TabsTrigger value="contests">Contest Rankings</TabsTrigger>
             <TabsTrigger value="monthly">Monthly Leaders</TabsTrigger>
@@ -52,25 +62,45 @@ export default function LeaderboardPage() {
               {mockGlobalUsers.slice(0, 3).map((user, index) => (
                 <Card
                   key={user.id}
-                  className={`relative ${index === 0 ? "md:order-2 ring-2 ring-primary" : index === 1 ? "md:order-1" : "md:order-3"}`}
+                  className={`relative border-2 border-border/50 bg-card/80 backdrop-blur-sm ${
+                    index === 0
+                      ? "md:order-2 ring-2 ring-primary"
+                      : index === 1
+                      ? "md:order-1"
+                      : "md:order-3"
+                  }`}
                 >
                   <CardHeader className="text-center pb-2">
-                    <div className="flex justify-center mb-3">{getRankIcon(user.globalRank)}</div>
+                    <div className="flex justify-center mb-3">
+                      {getRankIcon(user.globalRank)}
+                    </div>
                     <Avatar className="h-16 w-16 mx-auto mb-3">
-                      <AvatarFallback className="text-lg font-bold">{getInitials(user.username)}</AvatarFallback>
+                      <AvatarFallback className="text-lg font-bold">
+                        {getInitials(user.username)}
+                      </AvatarFallback>
                     </Avatar>
-                    <CardTitle className="text-lg">{user.username}</CardTitle>
+                    <CardTitle className="text-lg font-orbitron">
+                      {user.username}
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="text-center space-y-2">
-                    <div className="text-2xl font-bold text-primary">{user.totalScore}</div>
-                    <div className="text-sm text-muted-foreground">Total Score</div>
-                    <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+                    <div className="text-2xl font-bold text-primary font-orbitron">
+                      {user.totalScore}
+                    </div>
+                    <div className="text-sm text-muted-foreground font-jetbrains-mono">
+                      Total Score
+                    </div>
+                    <div className="flex justify-center gap-4 text-xs text-muted-foreground font-jetbrains-mono">
                       <div>{user.challengesSolved} solved</div>
                       <div>{user.contestsParticipated} contests</div>
                     </div>
                     <div className="flex flex-wrap gap-1 justify-center">
                       {user.badges.slice(0, 2).map((badge) => (
-                        <Badge key={badge} variant="outline" className="text-xs">
+                        <Badge
+                          key={badge}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {badge}
                         </Badge>
                       ))}
@@ -81,9 +111,9 @@ export default function LeaderboardPage() {
             </div>
 
             {/* Full Rankings Table */}
-            <Card>
+            <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle>Global Rankings</CardTitle>
+                <CardTitle className="font-orbitron">Global Rankings</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -93,30 +123,42 @@ export default function LeaderboardPage() {
                       className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-8 flex justify-center">{getRankIcon(user.globalRank)}</div>
+                        <div className="w-8 flex justify-center">
+                          {getRankIcon(user.globalRank)}
+                        </div>
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                          <AvatarFallback>
+                            {getInitials(user.username)}
+                          </AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium">{user.username}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <div className="font-medium font-jetbrains-mono">
+                            {user.username}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2 font-jetbrains-mono">
                             <Code className="h-3 w-3" />
                             {user.preferredLanguage}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-6 text-sm font-jetbrains-mono">
                         <div className="text-center">
-                          <div className="font-bold text-primary">{user.totalScore}</div>
+                          <div className="font-bold text-primary font-orbitron">
+                            {user.totalScore}
+                          </div>
                           <div className="text-muted-foreground">Score</div>
                         </div>
                         <div className="text-center">
-                          <div className="font-medium">{user.challengesSolved}</div>
+                          <div className="font-medium">
+                            {user.challengesSolved}
+                          </div>
                           <div className="text-muted-foreground">Solved</div>
                         </div>
                         <div className="text-center">
-                          <div className="font-medium">{user.contestsParticipated}</div>
+                          <div className="font-medium">
+                            {user.contestsParticipated}
+                          </div>
                           <div className="text-muted-foreground">Contests</div>
                         </div>
                         <div className="text-center">
@@ -134,26 +176,31 @@ export default function LeaderboardPage() {
           <TabsContent value="contests" className="space-y-6">
             <div className="grid gap-6">
               {mockContests.map((contest) => {
-                const participants = mockContestParticipants.filter((p) => p.contestId === contest.id)
-                if (participants.length === 0) return null
+                const participants = mockContestParticipants.filter(
+                  (p) => p.contestId === contest.id
+                );
+                if (participants.length === 0) return null;
 
                 return (
                   <Card key={contest.id}>
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle className="text-lg">{contest.title}</CardTitle>
+                          <CardTitle className="text-lg">
+                            {contest.title}
+                          </CardTitle>
                           <div className="flex items-center gap-2 mt-2">
                             <Badge
                               variant={
                                 contest.status === "completed"
                                   ? "secondary"
                                   : contest.status === "active"
-                                    ? "destructive"
-                                    : "default"
+                                  ? "destructive"
+                                  : "default"
                               }
                             >
-                              {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
+                              {contest.status.charAt(0).toUpperCase() +
+                                contest.status.slice(1)}
                             </Badge>
                             <div className="text-sm text-muted-foreground flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
@@ -174,20 +221,34 @@ export default function LeaderboardPage() {
                             className="flex items-center justify-between p-3 border border-border rounded-lg"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-6 flex justify-center">{getRankIcon(participant.rank)}</div>
+                              <div className="w-6 flex justify-center">
+                                {getRankIcon(participant.rank)}
+                              </div>
                               <Avatar className="h-8 w-8">
-                                <AvatarFallback className="text-sm">{getInitials(participant.username)}</AvatarFallback>
+                                <AvatarFallback className="text-sm">
+                                  {getInitials(participant.username)}
+                                </AvatarFallback>
                               </Avatar>
-                              <span className="font-medium">{participant.username}</span>
+                              <span className="font-medium">
+                                {participant.username}
+                              </span>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
                               <div className="text-center">
-                                <div className="font-bold text-primary">{participant.score}</div>
-                                <div className="text-muted-foreground">Score</div>
+                                <div className="font-bold text-primary">
+                                  {participant.score}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  Score
+                                </div>
                               </div>
                               <div className="text-center">
-                                <div className="font-medium">{participant.submissions}</div>
-                                <div className="text-muted-foreground">Submissions</div>
+                                <div className="font-medium">
+                                  {participant.submissions}
+                                </div>
+                                <div className="text-muted-foreground">
+                                  Submissions
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -195,7 +256,7 @@ export default function LeaderboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </TabsContent>
@@ -216,25 +277,34 @@ export default function LeaderboardPage() {
                       className="flex items-center justify-between p-4 border border-border rounded-lg"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-8 flex justify-center">{getRankIcon(index + 1)}</div>
+                        <div className="w-8 flex justify-center">
+                          {getRankIcon(index + 1)}
+                        </div>
                         <Avatar className="h-10 w-10">
-                          <AvatarFallback>{getInitials(user.username)}</AvatarFallback>
+                          <AvatarFallback>
+                            {getInitials(user.username)}
+                          </AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="font-medium">{user.username}</div>
                           <div className="text-sm text-muted-foreground">
-                            {Math.floor(user.totalScore * 0.3)} points this month
+                            {Math.floor(user.totalScore * 0.3)} points this
+                            month
                           </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4 text-sm">
                         <div className="text-center">
-                          <div className="font-bold text-primary">{Math.floor(user.challengesSolved * 0.4)}</div>
+                          <div className="font-bold text-primary">
+                            {Math.floor(user.challengesSolved * 0.4)}
+                          </div>
                           <div className="text-muted-foreground">Solved</div>
                         </div>
                         <div className="text-center">
-                          <div className="font-medium">{Math.floor(user.contestsParticipated * 0.5)}</div>
+                          <div className="font-medium">
+                            {Math.floor(user.contestsParticipated * 0.5)}
+                          </div>
                           <div className="text-muted-foreground">Contests</div>
                         </div>
                       </div>
@@ -247,5 +317,5 @@ export default function LeaderboardPage() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

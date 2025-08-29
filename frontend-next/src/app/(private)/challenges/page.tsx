@@ -72,8 +72,10 @@ export default function ChallengesPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-3xl font-bold text-foreground font-orbitron">
+              Challenges
+            </h1>
+            <p className="text-muted-foreground mt-2 font-jetbrains-mono">
               Test your coding skills with our collection of programming
               challenges
             </p>
@@ -90,10 +92,13 @@ export default function ChallengesPage() {
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search challenges..." className="pl-10" />
+            <Input
+              placeholder="Search challenges..."
+              className="pl-10 border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono"
+            />
           </div>
           <Select>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
               <SelectValue placeholder="Difficulty" />
             </SelectTrigger>
             <SelectContent>
@@ -104,7 +109,7 @@ export default function ChallengesPage() {
             </SelectContent>
           </Select>
           <Select>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px] border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -123,13 +128,13 @@ export default function ChallengesPage() {
           {mockChallenges.map((challenge) => (
             <Card
               key={challenge.id}
-              className="hover:shadow-lg transition-shadow"
+              className="hover:shadow-lg transition-shadow border-2 border-border/50 bg-card/80 backdrop-blur-sm"
             >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-xl">
+                      <CardTitle className="text-xl font-orbitron">
                         <Link
                           href={`/admin/challenges/${challenge.id}`}
                           className="hover:text-primary transition-colors"
@@ -182,7 +187,7 @@ export default function ChallengesPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-6 text-sm text-muted-foreground font-jetbrains-mono">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     {challenge.timeLimit}min

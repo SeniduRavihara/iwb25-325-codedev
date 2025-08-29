@@ -408,8 +408,10 @@ export default function ContestsPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Contests</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-3xl font-bold text-foreground font-orbitron">
+              Contests
+            </h1>
+            <p className="text-muted-foreground mt-2 font-jetbrains-mono">
               Participate in coding contests and compete with developers
               worldwide
             </p>
@@ -432,7 +434,7 @@ export default function ContestsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search contests by title or description..."
-              className="pl-10 pr-10 border-2 border-border focus:border-primary"
+              className="pl-10 pr-10 border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono"
               value={filters.search}
               onChange={(e) =>
                 setFilters((prev) => ({ ...prev, search: e.target.value }))
@@ -456,7 +458,7 @@ export default function ContestsPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 border-2 border-border hover:border-primary"
+              className="flex items-center gap-2 border-2 border-border/50 hover:border-primary font-jetbrains-mono"
             >
               <Filter className="h-4 w-4" />
               Filters
@@ -476,7 +478,7 @@ export default function ContestsPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="flex items-center gap-2 border-2 border-border hover:border-primary hover:bg-muted/50"
+                className="flex items-center gap-2 border-2 border-border/50 hover:border-primary hover:bg-muted/50 font-jetbrains-mono"
               >
                 <RefreshCw className="h-4 w-4" />
                 Clear All
@@ -484,21 +486,21 @@ export default function ContestsPage() {
             )}
 
             {/* Results count */}
-            <div className="text-sm text-muted-foreground ml-auto">
+            <div className="text-sm text-muted-foreground ml-auto font-jetbrains-mono">
               {filteredAndSortedContests.length} of {contests.length} contests
             </div>
           </div>
 
           {/* Advanced Filters */}
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg border-2 border-border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg border-2 border-border/50">
               <Select
                 value={filters.status}
                 onValueChange={(value: StatusFilter) =>
                   setFilters((prev) => ({ ...prev, status: value }))
                 }
               >
-                <SelectTrigger className="border-2 border-border focus:border-primary">
+                <SelectTrigger className="border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -517,7 +519,7 @@ export default function ContestsPage() {
                   setFilters((prev) => ({ ...prev, registrationStatus: value }))
                 }
               >
-                <SelectTrigger className="border-2 border-border focus:border-primary">
+                <SelectTrigger className="border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
                   <SelectValue placeholder="Registration" />
                 </SelectTrigger>
                 <SelectContent>
@@ -528,7 +530,9 @@ export default function ContestsPage() {
               </Select>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Sort by:</span>
+                <span className="text-sm font-medium font-jetbrains-mono">
+                  Sort by:
+                </span>
                 <div className="flex gap-1">
                   {(["title", "start_time"] as SortField[]).map((field) => (
                     <Button
@@ -536,7 +540,7 @@ export default function ContestsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => toggleSort(field)}
-                      className="h-8 px-2 border border-border hover:border-primary hover:bg-muted/50"
+                      className="h-8 px-2 border border-border/50 hover:border-primary hover:bg-muted/50 font-jetbrains-mono"
                     >
                       {getSortIcon(field)}
                       <span className="ml-1 text-xs capitalize">
@@ -607,7 +611,7 @@ export default function ContestsPage() {
         {/* No Results */}
         {filteredAndSortedContests.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
+            <div className="text-muted-foreground mb-4 font-jetbrains-mono">
               {hasActiveFilters ? (
                 <>
                   <p className="text-lg font-medium mb-2">No contests found</p>
@@ -628,7 +632,7 @@ export default function ContestsPage() {
               <Button
                 variant="outline"
                 onClick={clearFilters}
-                className="border-2 border-border hover:border-primary"
+                className="border-2 border-border/50 hover:border-primary font-jetbrains-mono"
               >
                 Clear All Filters
               </Button>
@@ -641,13 +645,13 @@ export default function ContestsPage() {
           {filteredAndSortedContests.map((contest) => (
             <Card
               key={contest.id}
-              className="hover:shadow-lg transition-shadow"
+              className="hover:shadow-lg transition-shadow border-2 border-border/50 bg-card/80 backdrop-blur-sm"
             >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <CardTitle className="text-xl">
+                      <CardTitle className="text-xl font-orbitron">
                         {/* <Link
                           href={`/contests/${contest.id}`}
                           className="hover:text-primary transition-colors"
@@ -679,7 +683,7 @@ export default function ContestsPage() {
                         )}
                       </div>
                     </div>
-                    <CardDescription className="mb-3">
+                    <CardDescription className="mb-3 font-jetbrains-mono">
                       {contest.description}
                     </CardDescription>
                   </div>
@@ -760,7 +764,7 @@ export default function ContestsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-jetbrains-mono">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <div>
@@ -804,7 +808,7 @@ export default function ContestsPage() {
 
                 {contest.prizes && (
                   <div className="mt-4 pt-4 border-t border-border">
-                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                    <div className="text-sm font-medium text-muted-foreground mb-2 font-jetbrains-mono">
                       Prizes:
                     </div>
                     <div className="flex flex-wrap gap-2">

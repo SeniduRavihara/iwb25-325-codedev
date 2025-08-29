@@ -237,10 +237,12 @@ export default function ProfilePage() {
               <User className="h-10 w-10 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">
+              <h1 className="text-3xl font-bold text-foreground font-orbitron">
                 {user?.username}
               </h1>
-              <p className="text-muted-foreground">{user?.email}</p>
+              <p className="text-muted-foreground font-jetbrains-mono">
+                {user?.email}
+              </p>
               <div className="flex items-center gap-2 mt-2">
                 <Badge
                   variant={user?.role === "admin" ? "destructive" : "default"}
@@ -259,69 +261,69 @@ export default function ProfilePage() {
         {/* Stats Overview */}
         {userStats && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium font-jetbrains-mono">
                   Total Contests
                 </CardTitle>
                 <Trophy className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold font-orbitron">
                   {userStats.totalContests}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-jetbrains-mono">
                   {userStats.contestsWon} contests won
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium font-jetbrains-mono">
                   Total Submissions
                 </CardTitle>
                 <Code className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold font-orbitron">
                   {userStats.totalSubmissions}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-jetbrains-mono">
                   {userStats.acceptedSubmissions} accepted
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium font-jetbrains-mono">
                   Average Score
                 </CardTitle>
                 <Zap className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold font-orbitron">
                   {userStats.averageScore}%
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-jetbrains-mono">
                   Best rank: #{userStats.bestRank}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+                <CardTitle className="text-sm font-medium font-jetbrains-mono">
                   Total Points
                 </CardTitle>
                 <Award className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold font-orbitron">
                   {userStats.totalPoints}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-jetbrains-mono">
                   {userStats.languagesUsed.length} languages used
                 </p>
               </CardContent>
@@ -331,7 +333,7 @@ export default function ProfilePage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-4 border-2 border-border/50 bg-background/50 font-jetbrains-mono">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="contests">Contests</TabsTrigger>
             <TabsTrigger value="submissions">Submissions</TabsTrigger>

@@ -58,10 +58,20 @@ public function checkUserExists(string username, string email) returns boolean|e
 
 // --Create new user--
 public function createUser(models:UserRegistration userReg, string hashedPassword) returns sql:ExecutionResult|error {
-    return dbClient->execute(`
+    io:println("📝 [CREATE] NEW USER: " + userReg.username + " (" + userReg.email + ")");
+
+    sql:ExecutionResult|error result = dbClient->execute(`
         INSERT INTO users (username, email, password_hash, is_admin, role) 
         VALUES (${userReg.username}, ${userReg.email}, ${hashedPassword}, FALSE, 'user')
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to create user: " + userReg.username + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] User created: " + userReg.username + " (ID: " + result.lastInsertId.toString() + ")");
+    }
+
+    return result;
 }
 
 // --Verify user credentials--
@@ -274,59 +284,71 @@ public function getTestCasesByChallengeId(int challengeId) returns models:TestCa
 
 // --Create new challenge--
 public function createChallenge(models:ChallengeCreate challengeData, int authorId) returns sql:ExecutionResult|error {
-    // Log the incoming data for debugging
-    // io:println("Creating challenge with data:");
-    // io:println("Title: " + challengeData.title);
-    // io:println("Description: " + challengeData.description);
-    // io:println("Difficulty: " + challengeData.difficulty);
-    // io:println("Tags: " + challengeData.tags);
-    // io:println("Time limit: " + challengeData.time_limit.toString());
-    // io:println("Memory limit: " + challengeData.memory_limit.toString());
+    io:println("📝 [CREATE] NEW CHALLENGE: " + challengeData.title + " (" + challengeData.difficulty + ")");
+    io:println("   📋 Description: " + challengeData.description.substring(0, 50) + "...");
+    io:println("   🏷️  Tags: " + challengeData.tags);
+    io:println("   ⏱️  Time Limit: " + challengeData.time_limit.toString() + "ms");
+    io:println("   💾 Memory Limit: " + challengeData.memory_limit.toString() + "MB");
+    io:println("   👤 Author ID: " + authorId.toString());
 
-    // Log if additional data is provided
-    // if challengeData.function_templates is string {
-    //     io:println("Function templates provided");
-    // }
-
-    // if challengeData.test_cases is string {
-    //     io:println("Test cases provided");
-    // }
-
-    // Create the challenge in database with function_templates and test_cases
-    return dbClient->execute(`
+    sql:ExecutionResult|error result = dbClient->execute(`
         INSERT INTO challenges (title, description, difficulty, tags, time_limit, memory_limit, author_id, submissions_count, success_rate, created_at, updated_at) 
         VALUES (${challengeData.title}, ${challengeData.description}, ${challengeData.difficulty}, ${challengeData.tags}, ${challengeData.time_limit}, ${challengeData.memory_limit}, ${authorId}, 0, 0.0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to create challenge: " + challengeData.title + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] Challenge created: " + challengeData.title + " (ID: " + result.lastInsertId.toString() + ")");
+    }
+
+    return result;
 }
 
 public function createTestCases(models:RecevingTestCases testcasesData, int challengeId) returns sql:ExecutionResult|error {
-    // Log the incoming data for debugging
-    // io:println("Creating test case with data:");
-    // io:println("Challenge ID: " + challengeId.toString());
-    // io:println("Input data: " + testcasesData.input_data);
-    // io:println("Expected output: " + testcasesData.expected_output);
-    // io:println("Is hidden: " + testcasesData.is_hidden.toString());
-    // io:println("Points: " + testcasesData.points.toString());
+    io:println("📝 [CREATE] NEW TEST CASE for Challenge ID: " + challengeId.toString());
+    io:println("   📥 Input: " + testcasesData.input_data);
+    io:println("   📤 Expected Output: " + testcasesData.expected_output);
+    io:println("   👁️  Hidden: " + testcasesData.is_hidden.toString());
+    io:println("   🏆 Points: " + testcasesData.points.toString());
 
-    // Create the test case in database
-    return dbClient->execute(`
+    sql:ExecutionResult|error result = dbClient->execute(`
         INSERT INTO test_cases (challenge_id, input_data, expected_output, is_hidden, points, created_at) 
         VALUES (${challengeId}, ${testcasesData.input_data}, ${testcasesData.expected_output}, ${testcasesData.is_hidden}, ${testcasesData.points}, CURRENT_TIMESTAMP)
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to create test case for Challenge " + challengeId.toString() + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] Test case created for Challenge " + challengeId.toString() + " (ID: " + result.lastInsertId.toString() + ")");
+    }
+
+    return result;
 }
 
 // Create new contest
 public function createContest(models:ContestCreate contestData, int createdBy) returns sql:ExecutionResult|error {
-    // Log the times being inserted for debugging
-    // io:println("DEBUG: Creating contest with times:");
-    // io:println("  Start time: " + contestData.start_time);
-    // io:println("  End time: " + contestData.end_time);
-    // io:println("  Registration deadline: " + contestData.registration_deadline);
+    io:println("📝 [CREATE] NEW CONTEST: " + contestData.title);
+    io:println("   📋 Description: " + contestData.description.substring(0, 50) + "...");
+    io:println("   🕐 Start Time: " + contestData.start_time);
+    io:println("   🕐 End Time: " + contestData.end_time);
+    io:println("   ⏱️  Duration: " + contestData.duration.toString() + " minutes");
+    io:println("   👥 Max Participants: " + contestData.max_participants.toString());
+    io:println("   🏆 Prizes: " + contestData.prizes);
+    io:println("   👤 Created By: " + createdBy.toString());
 
-    return dbClient->execute(`
+    sql:ExecutionResult|error result = dbClient->execute(`
         INSERT INTO contests (title, description, start_time, end_time, duration, status, max_participants, prizes, rules, created_by, registration_deadline, participants_count, created_at, updated_at) 
         VALUES (${contestData.title}, ${contestData.description}, ${contestData.start_time}, ${contestData.end_time}, ${contestData.duration}, 'upcoming', ${contestData.max_participants}, ${contestData.prizes}, ${contestData.rules}, ${createdBy}, ${contestData.registration_deadline}, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to create contest: " + contestData.title + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] Contest created: " + contestData.title + " (ID: " + result.lastInsertId.toString() + ")");
+    }
+
+    return result;
 }
 
 // --------------------------Code Template functions-----------------
@@ -525,61 +547,93 @@ public function debugContestsSimple() returns record {|int id; string title;|}[]
 
 // Delete challenge
 public function deleteChallenge(int challengeId) returns sql:ExecutionResult|error {
+    io:println("🗑️ [DELETE] CHALLENGE ID: " + challengeId.toString());
+
     // First delete related test cases
     sql:ExecutionResult|error testCasesResult = dbClient->execute(`
         DELETE FROM test_cases WHERE challenge_id = ${challengeId}
     `);
     if testCasesResult is error {
+        io:println("❌ [ERROR] Failed to delete test cases for Challenge " + challengeId.toString() + " - " + testCasesResult.message());
         return error("Failed to delete test cases: " + testCasesResult.message());
     }
+    io:println("   🗑️ Deleted test cases for Challenge " + challengeId.toString());
 
     // Then delete related contest challenges
     sql:ExecutionResult|error contestChallengesResult = dbClient->execute(`
         DELETE FROM contest_challenges WHERE challenge_id = ${challengeId}
     `);
     if contestChallengesResult is error {
+        io:println("❌ [ERROR] Failed to delete contest challenges for Challenge " + challengeId.toString() + " - " + contestChallengesResult.message());
         return error("Failed to delete contest challenges: " + contestChallengesResult.message());
     }
+    io:println("   🗑️ Deleted contest challenges for Challenge " + challengeId.toString());
 
     // Finally delete the challenge
-    return dbClient->execute(`
+    sql:ExecutionResult|error result = dbClient->execute(`
         DELETE FROM challenges WHERE id = ${challengeId}
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to delete challenge " + challengeId.toString() + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] Challenge deleted: " + challengeId.toString());
+    }
+
+    return result;
 }
 
 // Delete contest
 public function deleteContest(int contestId) returns sql:ExecutionResult|error {
+    io:println("🗑️ [DELETE] CONTEST ID: " + contestId.toString());
+
     // First delete related contest participants
     sql:ExecutionResult|error participantsResult = dbClient->execute(`
         DELETE FROM contest_participants WHERE contest_id = ${contestId}
     `);
     if participantsResult is error {
+        io:println("❌ [ERROR] Failed to delete contest participants for Contest " + contestId.toString() + " - " + participantsResult.message());
         return error("Failed to delete contest participants: " + participantsResult.message());
     }
+    io:println("   🗑️ Deleted contest participants for Contest " + contestId.toString());
 
     // Then delete related contest challenges
     sql:ExecutionResult|error contestChallengesResult = dbClient->execute(`
         DELETE FROM contest_challenges WHERE contest_id = ${contestId}
     `);
     if contestChallengesResult is error {
+        io:println("❌ [ERROR] Failed to delete contest challenges for Contest " + contestId.toString() + " - " + contestChallengesResult.message());
         return error("Failed to delete contest challenges: " + contestChallengesResult.message());
     }
+    io:println("   🗑️ Deleted contest challenges for Contest " + contestId.toString());
 
     // Finally delete the contest
-    return dbClient->execute(`
+    sql:ExecutionResult|error result = dbClient->execute(`
         DELETE FROM contests WHERE id = ${contestId}
     `);
+
+    if result is error {
+        io:println("❌ [ERROR] Failed to delete contest " + contestId.toString() + " - " + result.message());
+    } else {
+        io:println("✅ [SUCCESS] Contest deleted: " + contestId.toString());
+    }
+
+    return result;
 }
 
 // Register user for contest
 public function registerForContest(int contestId, int userId) returns sql:ExecutionResult|error {
+    io:println("📝 [REGISTER] User " + userId.toString() + " for Contest " + contestId.toString());
+
     // Check if user is already registered
     boolean|error alreadyRegistered = isUserRegisteredForContest(contestId, userId);
     if alreadyRegistered is error {
+        io:println("❌ [ERROR] Failed to check registration status - " + alreadyRegistered.message());
         return alreadyRegistered;
     }
 
     if alreadyRegistered {
+        io:println("⚠️ [WARNING] User " + userId.toString() + " already registered for Contest " + contestId.toString());
         return error("User is already registered for this contest");
     }
 
@@ -655,13 +709,22 @@ public function registerForContest(int contestId, int userId) returns sql:Execut
     `);
 
     if registerResult is error {
+        io:println("❌ [ERROR] Failed to register user " + userId.toString() + " for contest " + contestId.toString() + " - " + registerResult.message());
         return registerResult;
     }
 
     // Update contest participants count
-    return dbClient->execute(`
+    sql:ExecutionResult|error updateResult = dbClient->execute(`
         UPDATE contests SET participants_count = participants_count + 1 WHERE id = ${contestId}
     `);
+
+    if updateResult is error {
+        io:println("❌ [ERROR] Failed to update contest participants count - " + updateResult.message());
+    } else {
+        io:println("✅ [SUCCESS] User " + userId.toString() + " registered for Contest " + contestId.toString());
+    }
+
+    return updateResult;
 }
 
 // Unregister user from contest
@@ -799,6 +862,11 @@ public function saveContestSubmission(
         decimal successRate,
         decimal score
 ) returns error? {
+    io:println("📝 [SUBMISSION] User " + userId.toString() + " - Challenge " + challengeId.toString() + " - Contest " + contestId.toString());
+    io:println("   💻 Language: " + language);
+    io:println("   📊 Results: " + passedTests.toString() + "/" + totalTests.toString() + " (" + successRate.toString() + "%)");
+    io:println("   🏆 Score: " + score.toString());
+
     // Calculate result status based on success rate with more nuanced categorization
     string result;
     if successRate >= 100.0d {
@@ -811,30 +879,28 @@ public function saveContestSubmission(
         result = "compilation_error"; // or "runtime_error" depending on your needs
     }
 
+    io:println("   📋 Status: " + result);
+
     // Additional validation
     if userId <= 0 || challengeId <= 0 || contestId <= 0 {
+        io:println("❌ [ERROR] Invalid ID parameters provided");
         return error("Invalid ID parameters provided");
     }
 
     if code.length() == 0 {
+        io:println("❌ [ERROR] Code cannot be empty");
         return error("Code cannot be empty");
     }
 
     if language.length() == 0 {
+        io:println("❌ [ERROR] Language must be specified");
         return error("Language must be specified");
     }
 
     if totalTests < 0 || passedTests < 0 || passedTests > totalTests {
+        io:println("❌ [ERROR] Invalid test case counts");
         return error("Invalid test case counts");
     }
-
-    // Log the submission attempt
-    io:println("Saving submission - User: " + userId.toString() +
-                ", Challenge: " + challengeId.toString() +
-                ", Contest: " + contestId.toString());
-    io:println("Results - Passed: " + passedTests.toString() +
-                "/" + totalTests.toString() +
-                " (" + successRate.toString() + "%) - " + result);
 
     // First, check if a submission already exists
     sql:ParameterizedQuery checkQuery = `

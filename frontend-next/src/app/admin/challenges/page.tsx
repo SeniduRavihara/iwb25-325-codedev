@@ -170,14 +170,14 @@ export default function AdminChallengesPage() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold text-foreground font-orbitron">
             Manage Challenges
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 font-jetbrains-mono">
             Create, edit, and manage all coding challenges
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="font-jetbrains-mono">
           <Link href="/admin/challenges/add">
             <Plus className="h-4 w-4 mr-2" />
             Add Challenge
@@ -191,13 +191,13 @@ export default function AdminChallengesPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search challenges..."
-            className="pl-10 border-2 border-border focus:border-primary"
+            className="pl-10 border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
-          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
             <SelectValue placeholder="Difficulty" />
           </SelectTrigger>
           <SelectContent>
@@ -208,7 +208,7 @@ export default function AdminChallengesPage() {
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border focus:border-primary">
+          <SelectTrigger className="w-full sm:w-[180px] border-2 border-border/50 focus:border-primary bg-background/50 font-jetbrains-mono">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -222,14 +222,16 @@ export default function AdminChallengesPage() {
       </div>
 
       {/* Results count */}
-      <div className="text-sm text-muted-foreground mb-4">
+      <div className="text-sm text-muted-foreground mb-4 font-jetbrains-mono">
         {filteredChallenges.length} of {challenges.length} challenges
       </div>
 
       {/* Loading State */}
       {loading && (
         <div className="text-center py-8">
-          <div className="text-muted-foreground">Loading challenges...</div>
+          <div className="text-muted-foreground font-jetbrains-mono">
+            Loading challenges...
+          </div>
         </div>
       )}
 
@@ -245,7 +247,7 @@ export default function AdminChallengesPage() {
         <div className="grid gap-6">
           {filteredChallenges.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
+              <div className="text-muted-foreground mb-4 font-jetbrains-mono">
                 <p className="text-lg font-medium mb-2">No challenges found</p>
                 <p className="text-sm">
                   Try adjusting your search or filter criteria
@@ -256,13 +258,13 @@ export default function AdminChallengesPage() {
             filteredChallenges.map((challenge) => (
               <Card
                 key={challenge.id}
-                className="hover:shadow-lg transition-shadow"
+                className="hover:shadow-lg transition-shadow border-2 border-border/50 bg-card/80 backdrop-blur-sm"
               >
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-xl">
+                        <CardTitle className="text-xl font-orbitron">
                           <Link
                             href={`/admin/challenges/${challenge.id}`}
                             className="hover:text-primary transition-colors"
@@ -277,7 +279,7 @@ export default function AdminChallengesPage() {
                             challenge.difficulty.slice(1)}
                         </Badge>
                       </div>
-                      <CardDescription className="mb-3">
+                      <CardDescription className="mb-3 font-jetbrains-mono">
                         {challenge.description}
                       </CardDescription>
                       <div className="flex flex-wrap gap-2">
@@ -333,7 +335,7 @@ export default function AdminChallengesPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-jetbrains-mono">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
                       <div>

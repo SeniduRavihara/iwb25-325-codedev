@@ -102,21 +102,21 @@ export default function AdminDashboard() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-3xl font-bold text-foreground font-orbitron">
             Admin Dashboard
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 font-jetbrains-mono">
             Manage contests, challenges, and monitor platform activity
           </p>
         </div>
         <div className="flex space-x-4">
-          <Button asChild>
+          <Button asChild className="font-jetbrains-mono">
             <Link href="/admin/contests/create">
               <Plus className="h-4 w-4 mr-2" />
               Create Contest
             </Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="font-jetbrains-mono">
             <Link href="/admin/challenges/add">
               <Code className="h-4 w-4 mr-2" />
               Add Challenge
@@ -130,18 +130,21 @@ export default function AdminDashboard() {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <Card key={index}>
+            <Card
+              key={index}
+              className="border-2 border-border/50 bg-card/80 backdrop-blur-sm"
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-muted-foreground font-jetbrains-mono">
                   {stat.title}
                 </CardTitle>
                 <Icon className={`h-4 w-4 ${stat.color}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">
+                <div className="text-2xl font-bold text-foreground font-orbitron">
                   {stat.value}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground font-jetbrains-mono">
                   {stat.description}
                 </p>
               </CardContent>
@@ -152,14 +155,19 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Quick Actions */}
-        <Card>
+        <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
+            <CardTitle className="font-orbitron">Quick Actions</CardTitle>
+            <CardDescription className="font-jetbrains-mono">
+              Common administrative tasks
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Button asChild className="h-auto p-4 flex flex-col items-start">
+              <Button
+                asChild
+                className="h-auto p-4 flex flex-col items-start font-jetbrains-mono"
+              >
                 <Link href="/admin/contests">
                   <Trophy className="h-6 w-6 mb-2" />
                   <span className="font-medium">Manage Contests</span>
@@ -171,7 +179,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 asChild
-                className="h-auto p-4 flex flex-col items-start"
+                className="h-auto p-4 flex flex-col items-start font-jetbrains-mono"
               >
                 <Link href="/admin/challenges">
                   <Code className="h-6 w-6 mb-2" />
@@ -184,7 +192,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 asChild
-                className="h-auto p-4 flex flex-col items-start"
+                className="h-auto p-4 flex flex-col items-start font-jetbrains-mono"
               >
                 <Link href="/admin/analytics">
                   <BarChart3 className="h-6 w-6 mb-2" />
@@ -197,7 +205,7 @@ export default function AdminDashboard() {
               <Button
                 variant="outline"
                 asChild
-                className="h-auto p-4 flex flex-col items-start"
+                className="h-auto p-4 flex flex-col items-start font-jetbrains-mono"
               >
                 <Link href="/admin/settings">
                   <BarChart3 className="h-6 w-6 mb-2" />
@@ -212,10 +220,10 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Recent Activity */}
-        <Card>
+        <Card className="border-2 border-border/50 bg-card/80 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
+            <CardTitle className="font-orbitron">Recent Activity</CardTitle>
+            <CardDescription className="font-jetbrains-mono">
               Latest platform activities and events
             </CardDescription>
           </CardHeader>
@@ -239,7 +247,11 @@ export default function AdminDashboard() {
               ))}
             </div>
             <div className="mt-4 pt-4 border-t border-border">
-              <Button variant="outline" size="sm" className="w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full font-jetbrains-mono"
+              >
                 View All Activity
               </Button>
             </div>

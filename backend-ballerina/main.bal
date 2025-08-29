@@ -80,6 +80,8 @@ service / on new http:Listener(serverPort) {
 
     // User registration endpoint
     resource function post register(http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] POST /register - User registration request");
+
         json|http:ClientError payload = req.getJsonPayload();
 
         if payload is http:ClientError {
@@ -124,6 +126,8 @@ service / on new http:Listener(serverPort) {
 
     // User login endpoint
     resource function post login(http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] POST /login - User login request");
+
         json|http:ClientError payload = req.getJsonPayload();
 
         if payload is http:ClientError {
@@ -1246,6 +1250,8 @@ service / on new http:Listener(serverPort) {
 
     // Create new challenge (admin only)
     resource function post challenges(http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] POST /challenges - Create new challenge request");
+
         // Check if user is admin
         string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
         if authHeader is http:HeaderNotFoundError {
@@ -1338,6 +1344,8 @@ service / on new http:Listener(serverPort) {
 
     // Create new contest (admin only)
     resource function post contests(http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] POST /contests - Create new contest request");
+
         // Check if user is admin
         string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
         if authHeader is http:HeaderNotFoundError {
@@ -1430,6 +1438,8 @@ service / on new http:Listener(serverPort) {
 
     // Delete challenge (admin only)
     resource function delete challenges/[int challengeId](http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] DELETE /challenges/" + challengeId.toString() + " - Delete challenge request");
+
         // Check if user is admin
         string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
         if authHeader is http:HeaderNotFoundError {
@@ -1491,6 +1501,8 @@ service / on new http:Listener(serverPort) {
 
     // Delete contest (admin only)
     resource function delete contests/[int contestId](http:Caller caller, http:Request req) returns error? {
+        io:println("🔥 [API] DELETE /contests/" + contestId.toString() + " - Delete contest request");
+
         // Check if user is admin
         string|http:HeaderNotFoundError authHeader = req.getHeader("Authorization");
         if authHeader is http:HeaderNotFoundError {
