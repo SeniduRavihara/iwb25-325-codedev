@@ -33,7 +33,7 @@ export default function HomePage() {
     "Build real-world projects",
     "Compete with top developers",
     "Master algorithmic thinking",
-    "Launch your tech career",
+    "Launch your tech career.",
   ];
 
   const features = [
