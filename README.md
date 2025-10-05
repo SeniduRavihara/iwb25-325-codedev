@@ -1,4 +1,4 @@
-# CodeArena - Advanced Coding Platform
+# HackathonPlus - Advanced Coding Platform
 
 A modern competitive programming platform built with Next.js frontend and Ballerina backend, featuring real-time code execution, test case validation, and comprehensive contest management.
 
@@ -487,3 +487,4 @@ For support and questions:
 ---
 
 **Built with ❤️ for competitive programming enthusiasts**
+
